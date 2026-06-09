@@ -1,0 +1,1393 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PrintLab – Gestão de Loja</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.3/chart.umd.min.js"></script>
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+    import { getFirestore, doc, getDoc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyCozAHXM2DrxCx8McIE2xUjnCnzPxdkGZE",
+      authDomain: "printlab-shopee.firebaseapp.com",
+      projectId: "printlab-shopee",
+      storageBucket: "printlab-shopee.firebasestorage.app",
+      messagingSenderId: "1064573361577",
+      appId: "1:1064573361577:web:3967e890958b1434ee78b8"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db  = getFirestore(app);
+
+    // Expose to global scope for use in non-module script
+    window._db       = db;
+    window._doc      = doc;
+    window._getDoc   = getDoc;
+    window._setDoc   = setDoc;
+    window._onSnapshot = onSnapshot;
+    window._firebaseReady = true;
+    window.dispatchEvent(new Event('firebaseReady'));
+  </script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:      #0f0e0e;
+      --bg2:     #181616;
+      --bg3:     #211f1f;
+      --border:  #2e2a2a;
+      --accent:  #ee4d2d;
+      --accent2: #ff7455;
+      --text:    #f0ece8;
+      --text2:   #9e9791;
+      --text3:   #6b6560;
+      --green:   #4ade80;
+      --yellow:  #fbbf24;
+      --blue:    #60a5fa;
+      --r:       12px;
+    }
+
+    html { font-size: 16px; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'DM Sans', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    ::-webkit-scrollbar { width: 5px; }
+    ::-webkit-scrollbar-track { background: var(--bg2); }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+    /* ── SIDEBAR ── */
+    #sidebar {
+      width: 220px;
+      min-height: 100vh;
+      background: var(--bg2);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      flex-shrink: 0;
+      position: sticky;
+      top: 0;
+      height: 100vh;
+    }
+
+    .logo {
+      padding: 28px 24px 24px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .logo-icon {
+      width: 36px; height: 36px;
+      background: var(--accent);
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px;
+      flex-shrink: 0;
+    }
+    .logo-name { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 15px; letter-spacing: -0.3px; }
+    .logo-sub  { font-size: 11px; color: var(--text3); margin-top: -1px; }
+
+    nav { padding: 16px 12px; flex: 1; }
+    .nav-btn {
+      width: 100%; display: flex; align-items: center; gap: 10px;
+      padding: 10px 12px; border-radius: 8px; border: none;
+      background: transparent; color: var(--text2);
+      font-family: 'DM Sans', sans-serif; font-size: 14px;
+      cursor: pointer; transition: all 0.15s; margin-bottom: 2px;
+      text-align: left;
+    }
+    .nav-btn:hover { background: var(--bg3); color: var(--text); }
+    .nav-btn.active { background: rgba(238,77,45,0.12); color: var(--accent2); font-weight: 500; }
+    .nav-dot { margin-left: auto; width: 4px; height: 4px; border-radius: 2px; background: var(--accent); }
+
+    .sidebar-footer { padding: 16px 24px; border-top: 1px solid var(--border); font-size: 11px; color: var(--text3); line-height: 1.7; }
+
+    /* ── MAIN ── */
+    #main { flex: 1; overflow-y: auto; min-width: 0; }
+
+    .page { display: none; padding: 32px; max-width: 1100px; margin: 0 auto; animation: fadeIn 0.3s ease; }
+    .page.active { display: block; }
+
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+
+    .page-title { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 26px; letter-spacing: -0.5px; }
+    .page-sub { color: var(--text3); margin-top: 4px; font-size: 14px; }
+
+    /* ── CARD ── */
+    .card {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: var(--r);
+      padding: 24px;
+    }
+    .card-title { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 15px; margin-bottom: 20px; }
+
+    /* ── KPI GRID ── */
+    .kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px; }
+    .kpi-card { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--r); padding: 20px 24px; display: flex; justify-content: space-between; align-items: flex-start; }
+    .kpi-label { font-size: 11px; color: var(--text3); font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px; }
+    .kpi-value { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 26px; letter-spacing: -0.5px; }
+    .kpi-sub   { font-size: 12px; color: var(--text3); margin-top: 3px; }
+    .kpi-icon  { width: 38px; height: 38px; border-radius: 10px; background: var(--bg3); display: flex; align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0; }
+
+    /* ── CHARTS ── */
+    .charts-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px; }
+
+    /* ── TABLE ── */
+    .table-wrap { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--r); overflow: hidden; }
+    table { width: 100%; border-collapse: collapse; }
+    thead tr { background: var(--bg3); border-bottom: 1px solid var(--border); }
+    th { padding: 12px 16px; text-align: left; font-size: 11px; color: var(--text3); font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; }
+    tbody tr { border-bottom: 1px solid var(--border); transition: background 0.1s; cursor: default; }
+    tbody tr:last-child { border-bottom: none; }
+    tbody tr:hover { background: var(--bg3); }
+    td { padding: 13px 16px; font-size: 14px; }
+    .td-name { font-weight: 500; }
+    .td-sub  { font-size: 11px; color: var(--text3); margin-top: 2px; }
+
+    .badge {
+      display: inline-block; font-size: 12px; font-weight: 600;
+      padding: 3px 8px; border-radius: 6px;
+    }
+    .badge-cat  { background: var(--bg3); border: 1px solid var(--border); color: var(--text2); }
+    .badge-green  { background: rgba(74,222,128,0.12); color: var(--green); }
+    .badge-yellow { background: rgba(251,191,36,0.12);  color: var(--yellow); }
+    .badge-red    { background: rgba(238,77,45,0.12);   color: var(--accent2); }
+
+    /* ── BUTTONS ── */
+    .btn-primary {
+      display: inline-flex; align-items: center; gap: 7px;
+      padding: 10px 18px; border-radius: 8px; border: none;
+      background: var(--accent); color: #fff;
+      font-family: 'DM Sans', sans-serif; font-size: 14px; font-weight: 500;
+      cursor: pointer; transition: opacity 0.15s;
+    }
+    .btn-primary:hover { opacity: 0.88; }
+    .btn-ghost {
+      padding: 9px 18px; border-radius: 8px; border: 1px solid var(--border);
+      background: transparent; color: var(--text2);
+      font-family: 'DM Sans', sans-serif; font-size: 14px;
+      cursor: pointer;
+    }
+    .btn-icon {
+      background: none; border: none; color: var(--text3);
+      cursor: pointer; padding: 4px; border-radius: 5px; transition: color 0.15s;
+    }
+    .btn-icon:hover { color: var(--accent2); }
+
+    /* ── MODAL ── */
+    .modal-overlay {
+      display: none; position: fixed; inset: 0;
+      background: rgba(0,0,0,0.72);
+      align-items: center; justify-content: center;
+      z-index: 100; padding: 24px;
+    }
+    .modal-overlay.open { display: flex; }
+    .modal {
+      background: var(--bg2); border: 1px solid var(--border);
+      border-radius: var(--r); padding: 28px;
+      width: 100%; max-width: 520px; max-height: 90vh; overflow-y: auto;
+      animation: fadeIn 0.25s ease;
+    }
+    .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
+    .modal-title { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 18px; }
+    .modal-close { background: none; border: none; color: var(--text2); font-size: 22px; cursor: pointer; line-height: 1; }
+
+    /* ── FORM ── */
+    .field { margin-bottom: 16px; }
+    .field label { display: block; font-size: 12px; color: var(--text2); font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px; }
+    .field-hint { font-size: 11px; color: var(--text3); margin-top: 4px; }
+    input, select, textarea {
+      width: 100%; background: var(--bg3); border: 1px solid var(--border);
+      border-radius: 8px; padding: 9px 12px;
+      color: var(--text); font-family: 'DM Sans', sans-serif; font-size: 14px;
+      outline: none; transition: border-color 0.15s;
+    }
+    input:focus, select:focus { border-color: var(--accent); }
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+    .cost-box {
+      background: var(--bg3); border-radius: 8px; padding: 14px 16px; margin-bottom: 16px;
+    }
+    .cost-box-title { font-size: 11px; color: var(--text3); font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 12px; }
+
+    .sim-box {
+      border-radius: 8px; padding: 14px 16px; margin-bottom: 16px;
+    }
+    .sim-box.profit  { background: rgba(74,222,128,0.07);  border: 1px solid rgba(74,222,128,0.2); }
+    .sim-box.loss    { background: rgba(238,77,45,0.07);   border: 1px solid rgba(238,77,45,0.2); }
+    .sim-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px 16px; margin-top: 10px; }
+    .sim-item-label { font-size: 11px; color: var(--text3); }
+    .sim-item-value { font-weight: 600; font-size: 13px; }
+
+    .modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 4px; }
+
+    /* ── PAGE HEADER ── */
+    .page-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 28px; }
+
+    /* ── SUMMARY CARDS ── */
+    .summary-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 24px; }
+    .summary-card { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--r); padding: 20px 24px; }
+    .summary-label { font-size: 12px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px; }
+    .summary-value { font-family: 'Syne', sans-serif; font-size: 24px; font-weight: 700; }
+
+    /* ── SETTINGS ── */
+    .settings-card { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--r); padding: 24px; margin-bottom: 20px; }
+    .settings-title { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 16px; margin-bottom: 16px; }
+    .preset-row { display: grid; grid-template-columns: 1fr 1fr auto; gap: 12px; align-items: center; margin-bottom: 10px; }
+    .info-box { background: rgba(96,165,250,0.07); border: 1px solid rgba(96,165,250,0.2); border-radius: var(--r); padding: 18px 20px; }
+
+    /* ── FILTER BAR ── */
+    .filter-bar { display: flex; gap: 12px; align-items: center; }
+    .filter-bar select { width: auto; font-size: 13px; padding: 8px 12px; }
+
+    /* ── EMPTY ── */
+    .empty { padding: 48px; text-align: center; color: var(--text3); font-size: 14px; }
+
+    .legend { display: flex; gap: 16px; margin-top: 12px; }
+    .legend-item { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text2); }
+    .legend-dot  { width: 12px; height: 3px; border-radius: 2px; }
+
+    /* ══════════════════════════════════════════
+       MOBILE RESPONSIVE
+    ══════════════════════════════════════════ */
+
+    /* Bottom nav for mobile */
+    #bottom-nav {
+      display: none;
+      position: fixed; bottom: 0; left: 0; right: 0;
+      background: var(--bg2);
+      border-top: 1px solid var(--border);
+      z-index: 50;
+      padding: 0;
+      padding-bottom: env(safe-area-inset-bottom);
+    }
+    .bottom-nav-inner {
+      display: grid; grid-template-columns: repeat(4, 1fr);
+    }
+    .bnav-btn {
+      display: flex; flex-direction: column; align-items: center;
+      gap: 3px; padding: 10px 4px 8px;
+      background: none; border: none;
+      color: var(--text3); font-family: 'DM Sans', sans-serif;
+      font-size: 10px; cursor: pointer; transition: color 0.15s;
+    }
+    .bnav-btn .bnav-icon { font-size: 20px; line-height: 1; }
+    .bnav-btn.active { color: var(--accent2); }
+    .bnav-btn.active .bnav-icon { filter: drop-shadow(0 0 4px rgba(238,77,45,0.4)); }
+
+    @media (max-width: 768px) {
+      body { flex-direction: column; padding-bottom: 60px; }
+
+      /* Hide sidebar, show bottom nav */
+      #sidebar { display: none; }
+      #bottom-nav { display: block; }
+
+      /* Page padding */
+      .page { padding: 20px 16px; }
+      .page-header { flex-direction: column; gap: 14px; align-items: stretch; margin-bottom: 20px; }
+      .page-header .btn-primary { width: 100%; justify-content: center; }
+
+      /* KPIs: 2x2 grid */
+      .kpi-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 16px; }
+      .kpi-card { padding: 16px; }
+      .kpi-value { font-size: 20px; }
+      .kpi-icon  { width: 32px; height: 32px; font-size: 14px; }
+
+      /* Charts: stack */
+      .charts-row { grid-template-columns: 1fr; gap: 12px; margin-bottom: 12px; }
+
+      /* Summary grid: stack */
+      .summary-grid { grid-template-columns: 1fr; gap: 10px; margin-bottom: 16px; }
+      .summary-value { font-size: 20px; }
+
+      /* Tables → card list on mobile */
+      .table-wrap { background: transparent; border: none; border-radius: 0; overflow: visible; }
+      table, thead, tbody, th, td, tr { display: block; }
+      thead { display: none; }
+      tbody tr {
+        background: var(--bg2);
+        border: 1px solid var(--border);
+        border-radius: var(--r);
+        margin-bottom: 10px;
+        padding: 14px;
+        position: relative;
+      }
+      tbody tr:hover { background: var(--bg2); }
+
+      /* Products table cards */
+      #products-tbody td { padding: 3px 0; border: none; font-size: 13px; }
+      #products-tbody td:first-child { font-size: 15px; font-weight: 600; margin-bottom: 6px; padding-bottom: 8px; border-bottom: 1px solid var(--border); }
+      #products-tbody td:nth-child(2) { display: inline-block; margin-right: 6px; }
+      #products-tbody td:nth-child(3)::before { content: 'Preço: '; color: var(--text3); font-size: 11px; }
+      #products-tbody td:nth-child(4)::before { content: 'Custo: '; color: var(--text3); font-size: 11px; }
+      #products-tbody td:nth-child(5)::before { content: 'Lucro: '; color: var(--text3); font-size: 11px; }
+      #products-tbody td:nth-child(6) { display: inline-block; }
+      #products-tbody td:last-child {
+        position: absolute; top: 12px; right: 12px;
+        padding: 0; display: flex; gap: 4px;
+      }
+
+      /* Sales table cards */
+      #sales-tbody td { padding: 3px 0; border: none; font-size: 13px; }
+      #sales-tbody td:first-child { font-size: 11px; color: var(--text3); margin-bottom: 4px; }
+      #sales-tbody td:nth-child(2) { font-size: 15px; font-weight: 600; margin-bottom: 6px; padding-bottom: 8px; border-bottom: 1px solid var(--border); }
+      #sales-tbody td:nth-child(3)::before { content: 'Qtd: '; color: var(--text3); font-size: 11px; }
+      #sales-tbody td:nth-child(4)::before { content: 'Preço unit.: '; color: var(--text3); font-size: 11px; }
+      #sales-tbody td:nth-child(5)::before { content: 'Receita: '; color: var(--text3); font-size: 11px; }
+      #sales-tbody td:nth-child(6)::before { content: 'Lucro: '; color: var(--text3); font-size: 11px; }
+      #sales-tbody td:last-child {
+        position: absolute; top: 12px; right: 12px;
+        padding: 0;
+      }
+
+      /* Modals: full-screen bottom sheet */
+      .modal-overlay { padding: 0; align-items: flex-end; }
+      .modal {
+        border-radius: 20px 20px 0 0;
+        max-height: 92vh;
+        padding: 24px 20px;
+        padding-bottom: calc(24px + env(safe-area-inset-bottom));
+      }
+
+      /* Form grid: single column */
+      .grid-2 { grid-template-columns: 1fr; }
+
+      /* Sim grid: 2 cols on mobile */
+      .sim-grid { grid-template-columns: repeat(2, 1fr); }
+
+      /* Filter bar: stack */
+      .filter-bar { flex-direction: column; align-items: stretch; }
+      .filter-bar select { width: 100%; }
+
+      /* Settings */
+      .settings-card { padding: 18px 16px; }
+      .preset-row { grid-template-columns: 1fr auto; }
+      .preset-row input:first-child { grid-column: 1 / -1; }
+
+      /* Shopee fees: 2x2 */
+      #shopee-fees-grid { grid-template-columns: repeat(2,1fr) !important; }
+
+      /* Page title */
+      .page-title { font-size: 22px; }
+    }
+
+
+    @media (max-width: 768px) {
+      /* Slightly taller charts on mobile since they're full width */
+      #chart-monthly { aspect-ratio: 1.6 !important; }
+      #chart-products { aspect-ratio: 1.4 !important; }
+      #chart-units { aspect-ratio: 2.5 !important; }
+    }
+
+    @media (max-width: 400px) {
+      .kpi-grid { grid-template-columns: 1fr 1fr; }
+      .kpi-value { font-size: 17px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<aside id="sidebar">
+  <div class="logo">
+    <div class="logo-icon">🖨️</div>
+    <div>
+      <div class="logo-name">PrintLab</div>
+      <div class="logo-sub">Gestão de Loja</div>
+    </div>
+  </div>
+  <nav>
+    <button class="nav-btn active" onclick="navigate('dashboard')">
+      📊 Dashboard <span class="nav-dot" id="dot-dashboard"></span>
+    </button>
+    <button class="nav-btn" onclick="navigate('products')">
+      📦 Produtos
+    </button>
+    <button class="nav-btn" onclick="navigate('sales')">
+      🛒 Vendas
+    </button>
+    <button class="nav-btn" onclick="navigate('settings')">
+      ⚙️ Configurações
+    </button>
+  </nav>
+  <div class="sidebar-footer">
+    Print Lab · Shopee<br>v1.0.0<br>
+    <span id="sync-status" style="color:var(--text3);font-size:10px;transition:opacity 1s">🔄 Conectando...</span>
+  </div>
+</aside>
+
+<!-- BOTTOM NAV (mobile) -->
+<div id="bottom-nav">
+  <div class="bottom-nav-inner">
+    <button class="bnav-btn active" id="bnav-dashboard" onclick="navigate('dashboard')">
+      <span class="bnav-icon">📊</span>Dashboard
+    </button>
+    <button class="bnav-btn" id="bnav-products" onclick="navigate('products')">
+      <span class="bnav-icon">📦</span>Produtos
+    </button>
+    <button class="bnav-btn" id="bnav-sales" onclick="navigate('sales')">
+      <span class="bnav-icon">🛒</span>Vendas
+    </button>
+    <button class="bnav-btn" id="bnav-settings" onclick="navigate('settings')">
+      <span class="bnav-icon">⚙️</span>Config
+    </button>
+  </div>
+</div>
+
+<!-- MAIN -->
+<main id="main">
+
+  <!-- ══════════════ DASHBOARD ══════════════ -->
+  <div class="page active" id="page-dashboard">
+    <div class="page-header">
+      <div>
+        <div class="page-title">Dashboard</div>
+        <div class="page-sub">Visão geral da Print Lab</div>
+      </div>
+    </div>
+
+    <div class="kpi-grid">
+      <div class="kpi-card">
+        <div><div class="kpi-label">Receita Total</div><div class="kpi-value" id="kpi-revenue" style="color:var(--accent2)">—</div></div>
+        <div class="kpi-icon">💰</div>
+      </div>
+      <div class="kpi-card">
+        <div><div class="kpi-label">Lucro Total</div><div class="kpi-value" id="kpi-profit" style="color:var(--green)">—</div><div class="kpi-sub" id="kpi-margin"></div></div>
+        <div class="kpi-icon">📈</div>
+      </div>
+      <div class="kpi-card">
+        <div><div class="kpi-label">Unidades Vendidas</div><div class="kpi-value" id="kpi-units" style="color:var(--blue)">—</div></div>
+        <div class="kpi-icon">📦</div>
+      </div>
+      <div class="kpi-card">
+        <div><div class="kpi-label">Produtos Ativos</div><div class="kpi-value" id="kpi-products" style="color:var(--yellow)">—</div></div>
+        <div class="kpi-icon">🖨️</div>
+      </div>
+    </div>
+
+    <div class="charts-row">
+      <div class="card">
+        <div class="card-title">Receita × Lucro por Mês</div>
+        <canvas id="chart-monthly"></canvas>
+        <div class="legend">
+          <div class="legend-item"><div class="legend-dot" style="background:var(--accent2)"></div>Receita</div>
+          <div class="legend-item"><div class="legend-dot" style="background:var(--green)"></div>Lucro</div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">Top Produtos por Receita</div>
+        <canvas id="chart-products"></canvas>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Unidades Vendidas por Mês</div>
+      <canvas id="chart-units"></canvas>
+    </div>
+  </div>
+
+  <!-- ══════════════ PRODUCTS ══════════════ -->
+  <div class="page" id="page-products">
+    <div class="page-header">
+      <div>
+        <div class="page-title">Produtos</div>
+        <div class="page-sub" id="products-sub">0 produtos cadastrados</div>
+      </div>
+      <button class="btn-primary" onclick="openProductModal()">+ Novo Produto</button>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Produto</th>
+            <th>Categoria</th>
+            <th>Preço</th>
+            <th>Custo Total</th>
+            <th>Lucro</th>
+            <th>Margem</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="products-tbody"></tbody>
+      </table>
+      <div class="empty" id="products-empty" style="display:none">Nenhum produto cadastrado ainda.</div>
+    </div>
+  </div>
+
+  <!-- ══════════════ SALES ══════════════ -->
+  <div class="page" id="page-sales">
+    <div class="page-header">
+      <div>
+        <div class="page-title">Vendas</div>
+        <div class="page-sub" id="sales-sub">0 registros no total</div>
+      </div>
+      <div class="filter-bar">
+        <select id="sales-filter" onchange="renderSales()">
+          <option value="">Todos os meses</option>
+        </select>
+        <button class="btn-primary" onclick="openSaleModal()">+ Registrar Venda</button>
+      </div>
+    </div>
+
+    <div class="summary-grid">
+      <div class="summary-card"><div class="summary-label">Receita (período)</div><div class="summary-value" id="sales-rev" style="color:var(--accent2)">—</div></div>
+      <div class="summary-card"><div class="summary-label">Lucro (período)</div><div class="summary-value" id="sales-profit" style="color:var(--green)">—</div></div>
+      <div class="summary-card"><div class="summary-label">Unidades</div><div class="summary-value" id="sales-units" style="color:var(--blue)">—</div></div>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Data</th>
+            <th>Produto</th>
+            <th>Qtd</th>
+            <th>Preço Unit.</th>
+            <th>Receita</th>
+            <th>Lucro Total</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="sales-tbody"></tbody>
+      </table>
+      <div class="empty" id="sales-empty" style="display:none">Nenhuma venda registrada.</div>
+    </div>
+  </div>
+
+  <!-- ══════════════ SETTINGS ══════════════ -->
+  <div class="page" id="page-settings">
+    <div class="page-header">
+      <div>
+        <div class="page-title">Configurações</div>
+        <div class="page-sub">Presets de filamento e parâmetros gerais</div>
+      </div>
+    </div>
+
+    <div class="settings-card">
+      <div class="settings-title">Taxas da Shopee</div>
+      <div id="shopee-fees-grid" style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px">
+        <div style="background:var(--bg3);border-radius:8px;padding:14px 16px">
+          <div style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:6px">Comissão</div>
+          <div style="font-family:'Syne',sans-serif;font-size:22px;font-weight:700;color:var(--accent2)">18%</div>
+          <div style="font-size:11px;color:var(--text3);margin-top:2px">sobre o preço</div>
+        </div>
+        <div style="background:var(--bg3);border-radius:8px;padding:14px 16px">
+          <div style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:6px">Transação</div>
+          <div style="font-family:'Syne',sans-serif;font-size:22px;font-weight:700;color:var(--accent2)">2%</div>
+          <div style="font-size:11px;color:var(--text3);margin-top:2px">sobre o preço</div>
+        </div>
+        <div style="background:var(--bg3);border-radius:8px;padding:14px 16px">
+          <div style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:6px">Taxa por Item</div>
+          <div style="font-family:'Syne',sans-serif;font-size:22px;font-weight:700;color:var(--accent2)">R$4,00</div>
+          <div style="font-size:11px;color:var(--text3);margin-top:2px">fixo por pedido</div>
+        </div>
+        <div style="background:var(--bg3);border-radius:8px;padding:14px 16px">
+          <div style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:6px">Devolução Fácil</div>
+          <div style="font-family:'Syne',sans-serif;font-size:22px;font-weight:700;color:var(--accent2)">R$0,49</div>
+          <div style="font-size:11px;color:var(--text3);margin-top:2px">fixo por pedido</div>
+        </div>
+      </div>
+      <div style="margin-top:12px;font-size:12px;color:var(--text3)">
+        Baseado nos pedidos reais da loja. Total médio de taxas: ~R$ 4,49 + 20% do preço de venda.
+      </div>
+    </div>
+
+    <div class="settings-card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+        <div class="settings-title" style="margin:0">Filamentos Cadastrados</div>
+        <button class="btn-ghost" style="font-size:13px;padding:7px 14px" onclick="addPresetRow()">+ Adicionar</button>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:0 12px;margin-bottom:10px">
+        <div style="font-size:11px;color:var(--text3);font-weight:600;text-transform:uppercase;letter-spacing:0.05em;padding-bottom:8px;border-bottom:1px solid var(--border)">Nome</div>
+        <div style="font-size:11px;color:var(--text3);font-weight:600;text-transform:uppercase;letter-spacing:0.05em;padding-bottom:8px;border-bottom:1px solid var(--border)">Preço por kg (R$)</div>
+        <div style="border-bottom:1px solid var(--border)"></div>
+      </div>
+      <div id="presets-list"></div>
+      <div style="display:flex;justify-content:flex-end;margin-top:20px">
+        <button class="btn-primary" id="save-btn" onclick="savePresets()">💾 Salvar Configurações</button>
+      </div>
+    </div>
+
+
+    <div class="settings-card">
+      <div class="settings-title">📤 Backup de Dados</div>
+      <div style="font-size:13px;color:var(--text2);margin-bottom:16px;line-height:1.6">
+        Os dados ficam salvos apenas neste navegador. Use o backup para transferir entre dispositivos ou guardar uma cópia.
+      </div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        <button class="btn-primary" onclick="exportData()" style="background:var(--blue)">⬇️ Exportar JSON</button>
+        <label style="display:inline-flex;align-items:center;gap:7px;padding:10px 18px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--text2);font-size:14px;font-weight:500;cursor:pointer;font-family:'DM Sans',sans-serif">
+          ⬆️ Importar JSON
+          <input type="file" accept=".json" id="import-file" style="display:none;width:auto" onchange="importData(event)" />
+        </label>
+      </div>
+      <div id="import-msg" style="display:none;margin-top:12px;font-size:13px;padding:10px 14px;border-radius:8px;background:rgba(74,222,128,0.1);border:1px solid rgba(74,222,128,0.25);color:var(--green)"></div>
+    </div>
+
+    <div class="info-box">
+      <div style="font-size:13px;color:var(--blue);font-weight:600;margin-bottom:6px">ℹ️ Como o custo de filamento é calculado</div>
+      <div style="font-size:13px;color:var(--text2);line-height:1.7">
+        Custo = (gramas da peça ÷ 1000) × preço por kg do filamento<br>
+        <span style="color:var(--text3)">Exemplo: peça de 45g com PLA a R$80/kg → R$ 3,60 de filamento</span>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<!-- ══════════════ PRODUCT MODAL ══════════════ -->
+<div class="modal-overlay" id="product-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="product-modal-title">Novo Produto</div>
+      <button class="modal-close" onclick="closeProductModal()">×</button>
+    </div>
+    <div class="field">
+      <label>Nome do Produto</label>
+      <input id="p-name" placeholder="Ex: Vasinho Gatinho" />
+    </div>
+    <div class="grid-2">
+      <div class="field">
+        <label>Categoria</label>
+        <select id="p-cat">
+          <option>Decoração</option>
+          <option>Funcional</option>
+          <option>Brinquedo</option>
+          <option>Escritório</option>
+          <option>Outros</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Preço de Venda (R$)</label>
+        <input id="p-price" type="number" step="0.01" placeholder="0,00" oninput="updateSim()" />
+      </div>
+    </div>
+    <div class="cost-box">
+      <div class="cost-box-title">Custos de Produção</div>
+      <div class="grid-2">
+        <div class="field">
+          <label>Filamento</label>
+          <select id="p-filament" onchange="updateSim()"></select>
+        </div>
+        <div class="field">
+          <label>Peso (gramas)</label>
+          <input id="p-grams" type="number" step="1" placeholder="Ex: 45" oninput="updateSim()" />
+        </div>
+        <div class="field">
+          <label>Pintura (R$)</label>
+          <input id="p-paint" type="number" step="0.01" value="0" oninput="updateSim()" />
+          <div class="field-hint">Deixe 0 se não aplica</div>
+        </div>
+        <div class="field">
+          <label>Embalagem (R$)</label>
+          <input id="p-pkg" type="number" step="0.01" value="0" oninput="updateSim()" />
+        </div>
+      </div>
+    </div>
+    <div id="sim-box" style="display:none" class="sim-box profit">
+      <div style="font-size:12px;color:var(--text3);font-weight:600;text-transform:uppercase;letter-spacing:0.05em">Simulação de Custos</div>
+      <div class="sim-grid">
+        <div><div class="sim-item-label">Filamento</div><div class="sim-item-value" id="sim-fil">—</div></div>
+        <div><div class="sim-item-label">Pintura</div><div class="sim-item-value" id="sim-paint">—</div></div>
+        <div><div class="sim-item-label">Embalagem</div><div class="sim-item-value" id="sim-pkg">—</div></div>
+        <div><div class="sim-item-label">Comissão Shopee (18%)</div><div class="sim-item-value" id="sim-commission">—</div></div>
+        <div><div class="sim-item-label">Taxa Transação (2%)</div><div class="sim-item-value" id="sim-transaction">—</div></div>
+        <div><div class="sim-item-label">Taxa por Item (fixo)</div><div class="sim-item-value" id="sim-itemfee">—</div></div>
+        <div><div class="sim-item-label">Devolução Fácil (fixo)</div><div class="sim-item-value" id="sim-devol">—</div></div>
+        <div><div class="sim-item-label">Custo Total</div><div class="sim-item-value" id="sim-total">—</div></div>
+        <div><div class="sim-item-label">Lucro</div><div class="sim-item-value" id="sim-profit">—</div></div>
+      </div>
+    </div>
+    <div class="field">
+      <label>Observações</label>
+      <input id="p-notes" placeholder="Opcional..." />
+    </div>
+    <input type="hidden" id="p-editing-id" value="" />
+    <div class="modal-actions">
+      <button class="btn-ghost" onclick="closeProductModal()">Cancelar</button>
+      <button class="btn-primary" onclick="saveProduct()">Salvar Produto</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════ SALE MODAL ══════════════ -->
+<div class="modal-overlay" id="sale-modal">
+  <div class="modal" style="max-width:440px">
+    <div class="modal-header">
+      <div class="modal-title">Registrar Venda</div>
+      <button class="modal-close" onclick="closeSaleModal()">×</button>
+    </div>
+    <div class="field">
+      <label>Produto</label>
+      <select id="s-product" onchange="onSaleProductChange()"></select>
+    </div>
+    <div class="grid-2">
+      <div class="field">
+        <label>Data</label>
+        <input id="s-date" type="date" />
+      </div>
+      <div class="field">
+        <label>Quantidade</label>
+        <input id="s-qty" type="number" min="1" value="1" oninput="updateSaleSim()" />
+      </div>
+      <div class="field">
+        <label>Preço de Venda (R$)</label>
+        <input id="s-price" type="number" step="0.01" oninput="updateSaleSim()" />
+      </div>
+    </div>
+    <div id="sale-sim" style="display:none;background:var(--bg3);border-radius:8px;padding:12px 14px;margin-bottom:16px">
+      <div style="font-size:11px;color:var(--text3);margin-bottom:8px;text-transform:uppercase;letter-spacing:0.05em">Lucro por Unidade</div>
+      <div style="display:flex;gap:20px;flex-wrap:wrap">
+        <div><div style="font-size:11px;color:var(--text3)">Custo</div><div style="font-weight:600;font-size:14px" id="ss-cost">—</div></div>
+        <div><div style="font-size:11px;color:var(--text3)">Lucro</div><div style="font-weight:600;font-size:14px" id="ss-profit">—</div></div>
+        <div><div style="font-size:11px;color:var(--text3)">Margem</div><div style="font-weight:600;font-size:14px" id="ss-margin">—</div></div>
+        <div id="ss-total-wrap"><div style="font-size:11px;color:var(--text3)" id="ss-total-label">—</div><div style="font-weight:600;font-size:14px;color:var(--green)" id="ss-total">—</div></div>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-ghost" onclick="closeSaleModal()">Cancelar</button>
+      <button class="btn-primary" onclick="saveSale()">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ══════════════════════════════════════════
+//  DATA LAYER
+// ══════════════════════════════════════════
+// Taxas reais da Shopee (extraídas dos pedidos reais)
+const SHOPEE_COMMISSION  = 0.18;  // 18% comissão bruta
+const SHOPEE_TRANSACTION = 0.02;  // 2% taxa de transação
+const SHOPEE_ITEM_FEE    = 4.00;  // R$ 4,00 fixo por item
+const SHOPEE_DEVOL_FEE   = 0.49;  // R$ 0,49 Devolução Fácil Shopee
+
+const DEFAULT_FILAMENTS = [
+  { id: 'pla-basic',   name: 'PLA Básico',   pricePerKg: 80  },
+  { id: 'pla-premium', name: 'PLA Premium',  pricePerKg: 120 },
+  { id: 'petg',        name: 'PETG',         pricePerKg: 110 },
+  { id: 'abs',         name: 'ABS',          pricePerKg: 90  },
+  { id: 'tpu',         name: 'TPU Flexível', pricePerKg: 150 },
+];
+
+const DEFAULT_PRODUCTS = [
+  { id:'1', name:'Kit Ganchos Parede Minimalista',   category:'Funcional',  price:24.90, filamentType:'pla-basic',   filamentGrams:45, paintCost:0,    packagingCost:2.50, notes:'Kit com 5 ganchos' },
+  { id:'2', name:'Porta Comprimidos Minimalista 3D', category:'Funcional',  price:12.90, filamentType:'pla-basic',   filamentGrams:30, paintCost:0,    packagingCost:1.50, notes:'' },
+  { id:'3', name:'Porta-Lápis Geométrico',           category:'Decoração',  price:28.90, filamentType:'pla-premium', filamentGrams:80, paintCost:3.00, packagingCost:2.00, notes:'Pintado à mão' },
+  { id:'4', name:'Ímã Decorativo Amigurumi – Gato',  category:'Decoração',  price:12.90, filamentType:'pla-premium', filamentGrams:15, paintCost:2.50, packagingCost:1.00, notes:'' },
+  { id:'5', name:'Vasinho Gatinho',                  category:'Decoração',  price:19.90, filamentType:'pla-premium', filamentGrams:60, paintCost:4.00, packagingCost:2.00, notes:'' },
+];
+
+const DEFAULT_SALES = [
+  {id:'s1', productId:'1', date:'2025-01-05', qty:2, salePrice:24.90},
+  {id:'s2', productId:'3', date:'2025-01-08', qty:1, salePrice:28.90},
+  {id:'s3', productId:'4', date:'2025-01-10', qty:3, salePrice:12.90},
+  {id:'s4', productId:'5', date:'2025-01-12', qty:1, salePrice:19.90},
+  {id:'s5', productId:'2', date:'2025-01-15', qty:4, salePrice:12.90},
+  {id:'s6', productId:'1', date:'2025-02-03', qty:3, salePrice:24.90},
+  {id:'s7', productId:'4', date:'2025-02-07', qty:5, salePrice:12.90},
+  {id:'s8', productId:'3', date:'2025-02-14', qty:2, salePrice:28.90},
+  {id:'s9', productId:'5', date:'2025-02-20', qty:2, salePrice:19.90},
+  {id:'s10',productId:'2', date:'2025-02-25', qty:6, salePrice:12.90},
+  {id:'s11',productId:'1', date:'2025-03-02', qty:4, salePrice:24.90},
+  {id:'s12',productId:'3', date:'2025-03-10', qty:3, salePrice:26.90},
+  {id:'s13',productId:'4', date:'2025-03-15', qty:8, salePrice:12.90},
+  {id:'s14',productId:'5', date:'2025-03-20', qty:3, salePrice:19.90},
+  {id:'s15',productId:'2', date:'2025-03-28', qty:5, salePrice:12.90},
+  {id:'s16',productId:'1', date:'2025-04-01', qty:5, salePrice:24.90},
+  {id:'s17',productId:'4', date:'2025-04-08', qty:10,salePrice:11.90},
+  {id:'s18',productId:'3', date:'2025-04-12', qty:2, salePrice:28.90},
+  {id:'s19',productId:'5', date:'2025-04-18', qty:4, salePrice:19.90},
+  {id:'s20',productId:'2', date:'2025-04-25', qty:7, salePrice:12.90},
+  {id:'s21',productId:'1', date:'2025-05-03', qty:6, salePrice:22.90},
+  {id:'s22',productId:'4', date:'2025-05-10', qty:12,salePrice:11.90},
+  {id:'s23',productId:'3', date:'2025-05-15', qty:4, salePrice:28.90},
+  {id:'s24',productId:'5', date:'2025-05-20', qty:5, salePrice:19.90},
+  {id:'s25',productId:'2', date:'2025-05-28', qty:8, salePrice:12.90},
+];
+
+// ── Storage helpers (localStorage fallback)
+function loadLocal(key, def) { try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : def; } catch { return def; } }
+function saveLocal(key, val) { try { localStorage.setItem(key, JSON.stringify(val)); } catch {} }
+
+let filaments = loadLocal('pl_filaments', DEFAULT_FILAMENTS);
+let products  = loadLocal('pl_products',  DEFAULT_PRODUCTS);
+let sales     = loadLocal('pl_sales',     DEFAULT_SALES);
+
+// ── Firebase sync
+let _fbReady = false;
+let _syncTimeout = null;
+
+function save(key, val) {
+  // Always save locally first (instant)
+  saveLocal(key, val);
+  // Then sync to Firebase
+  scheduleFbSync();
+}
+
+function scheduleFbSync() {
+  clearTimeout(_syncTimeout);
+  _syncTimeout = setTimeout(pushToFirebase, 800);
+}
+
+async function pushToFirebase() {
+  if (!window._db) return;
+  try {
+    await window._setDoc(window._doc(window._db, 'store', 'data'), {
+      filaments, products, sales,
+      updatedAt: new Date().toISOString()
+    });
+    showSyncStatus('✅ Sincronizado', 'var(--green)');
+  } catch(e) {
+    showSyncStatus('⚠️ Erro ao sincronizar', 'var(--yellow)');
+    console.error('Firebase sync error:', e);
+  }
+}
+
+async function pullFromFirebase() {
+  if (!window._db) return;
+  showSyncStatus('🔄 Sincronizando...', 'var(--text3)');
+  try {
+    const snap = await window._getDoc(window._doc(window._db, 'store', 'data'));
+    if (snap.exists()) {
+      const data = snap.data();
+      filaments = data.filaments || DEFAULT_FILAMENTS;
+      products  = data.products  || DEFAULT_PRODUCTS;
+      sales     = data.sales     || DEFAULT_SALES;
+      saveLocal('pl_filaments', filaments);
+      saveLocal('pl_products',  products);
+      saveLocal('pl_sales',     sales);
+      // Re-render current page
+      const activePage = document.querySelector('.page.active');
+      if (activePage) {
+        const pageId = activePage.id.replace('page-', '');
+        if (pageId === 'dashboard') renderDashboard();
+        if (pageId === 'products')  renderProducts();
+        if (pageId === 'sales')     renderSales();
+        if (pageId === 'settings')  renderSettings();
+      }
+      showSyncStatus('✅ Dados carregados', 'var(--green)');
+    } else {
+      // No data in Firebase yet — push local data
+      await pushToFirebase();
+    }
+  } catch(e) {
+    showSyncStatus('⚠️ Offline', 'var(--yellow)');
+    console.error('Firebase pull error:', e);
+  }
+}
+
+function showSyncStatus(msg, color) {
+  ['sync-status', 'mobile-sync'].forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.textContent = msg;
+    el.style.color = color;
+    el.style.opacity = '1';
+    clearTimeout(el._hideTimeout);
+    el._hideTimeout = setTimeout(() => el.style.opacity = '0', 3000);
+  });
+}
+
+// Init Firebase when ready
+window.addEventListener('firebaseReady', () => {
+  _fbReady = true;
+  pullFromFirebase();
+});
+// If already ready (e.g. cached)
+if (window._firebaseReady) pullFromFirebase();
+
+// ══════════════════════════════════════════
+//  COST HELPERS
+// ══════════════════════════════════════════
+function getFilament(id) { return filaments.find(f => f.id === id) || filaments[0]; }
+
+function calcCost(p, price) {
+  const fil        = getFilament(p.filamentType);
+  const filC       = (p.filamentGrams / 1000) * fil.pricePerKg;
+  const commission = price * SHOPEE_COMMISSION;
+  const transaction= price * SHOPEE_TRANSACTION;
+  const itemFee    = SHOPEE_ITEM_FEE;
+  const devolFee   = SHOPEE_DEVOL_FEE;
+  const totalFees  = commission + transaction + itemFee + devolFee;
+  const total      = filC + p.paintCost + p.packagingCost + totalFees;
+  return { filC, paintCost: p.paintCost, packagingCost: p.packagingCost,
+           commission, transaction, itemFee, devolFee, totalFees, total };
+}
+
+function calcProfit(p, price) {
+  const c = calcCost(p, price);
+  const profit = price - c.total;
+  const margin = price > 0 ? (profit / price * 100) : 0;
+  return { ...c, profit, margin };
+}
+
+function fmt(n) { return 'R$ ' + n.toFixed(2); }
+function fmtMonth(dateStr) {
+  const [y, m] = dateStr.split('-');
+  const months = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+  return months[parseInt(m)-1] + '/' + y.slice(2);
+}
+
+// ══════════════════════════════════════════
+//  NAVIGATION
+// ══════════════════════════════════════════
+function navigate(page) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('page-' + page).classList.add('active');
+  const btns = document.querySelectorAll('.nav-btn');
+  btns.forEach(b => { if (b.getAttribute('onclick').includes(page)) b.classList.add('active'); });
+
+  // Update bottom nav
+  document.querySelectorAll('.bnav-btn').forEach(b => b.classList.remove('active'));
+  const bnav = document.getElementById('bnav-' + page);
+  if (bnav) bnav.classList.add('active');
+
+  if (page === 'dashboard') renderDashboard();
+  if (page === 'products')  renderProducts();
+  if (page === 'sales')     renderSales();
+  if (page === 'settings')  renderSettings();
+}
+
+// ══════════════════════════════════════════
+//  DASHBOARD
+// ══════════════════════════════════════════
+let chartMonthly, chartProducts, chartUnits;
+
+const chartDefaults = {
+  color: '#9e9791',
+  font: { family: "'DM Sans', sans-serif", size: 12 },
+};
+
+function renderDashboard() {
+  let rev = 0, profit = 0, units = 0;
+  const byMonth = {}, byProduct = {};
+
+  sales.forEach(s => {
+    const p = products.find(x => x.id === s.productId);
+    if (!p) return;
+    const r = s.salePrice * s.qty;
+    const pr = calcProfit(p, s.salePrice).profit * s.qty;
+    rev += r; profit += pr; units += s.qty;
+
+    const mk = s.date.slice(0, 7);
+    if (!byMonth[mk]) byMonth[mk] = { label: fmtMonth(s.date), rev: 0, profit: 0, units: 0 };
+    byMonth[mk].rev    += r;
+    byMonth[mk].profit += pr;
+    byMonth[mk].units  += s.qty;
+
+    if (!byProduct[s.productId]) byProduct[s.productId] = { name: p.name, rev: 0 };
+    byProduct[s.productId].rev += r;
+  });
+
+  document.getElementById('kpi-revenue').textContent  = fmt(rev);
+  document.getElementById('kpi-profit').textContent   = fmt(profit);
+  document.getElementById('kpi-margin').textContent   = 'Margem: ' + (rev > 0 ? (profit/rev*100).toFixed(1) : 0) + '%';
+  document.getElementById('kpi-units').textContent    = units;
+  document.getElementById('kpi-products').textContent = products.length;
+
+  const months = Object.values(byMonth).sort((a,b) => a.label < b.label ? -1 : 1);
+  const topProds = Object.values(byProduct).sort((a,b) => b.rev - a.rev).slice(0,5);
+
+  // Monthly line chart
+  if (chartMonthly) chartMonthly.destroy();
+  chartMonthly = new Chart(document.getElementById('chart-monthly'), {
+    type: 'line',
+    data: {
+      labels: months.map(m => m.label),
+      datasets: [
+        { label: 'Receita', data: months.map(m => +m.rev.toFixed(2)), borderColor: '#ff7455', backgroundColor: 'rgba(255,116,85,0.08)', borderWidth: 2.5, pointRadius: 3, tension: 0.3, fill: true },
+        { label: 'Lucro',   data: months.map(m => +m.profit.toFixed(2)), borderColor: '#4ade80', backgroundColor: 'rgba(74,222,128,0.06)', borderWidth: 2.5, pointRadius: 3, tension: 0.3, fill: true },
+      ]
+    },
+    options: { responsive: true, maintainAspectRatio: true, aspectRatio: 2, plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => fmt(ctx.raw) } } }, scales: { x: { ticks: chartDefaults, grid: { color: '#2e2a2a' } }, y: { ticks: { ...chartDefaults, callback: v => 'R$' + v }, grid: { color: '#2e2a2a' } } } }
+  });
+
+  // Top products bar
+  if (chartProducts) chartProducts.destroy();
+  const barColors = ['#ee4d2d','#ff7455','#4ade80','#60a5fa','#fbbf24'];
+  chartProducts = new Chart(document.getElementById('chart-products'), {
+    type: 'bar',
+    data: {
+      labels: topProds.map(p => p.name.length > 20 ? p.name.slice(0,20)+'…' : p.name),
+      datasets: [{ label: 'Receita', data: topProds.map(p => +p.rev.toFixed(2)), backgroundColor: barColors, borderRadius: 5 }]
+    },
+    options: { indexAxis: 'y', responsive: true, maintainAspectRatio: true, aspectRatio: 1.6, plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => fmt(ctx.raw) } } }, scales: { x: { ticks: { ...chartDefaults, callback: v => 'R$' + v }, grid: { color: '#2e2a2a' } }, y: { ticks: chartDefaults, grid: { display: false } } } }
+  });
+
+  // Units bar
+  if (chartUnits) chartUnits.destroy();
+  chartUnits = new Chart(document.getElementById('chart-units'), {
+    type: 'bar',
+    data: {
+      labels: months.map(m => m.label),
+      datasets: [{ label: 'Unidades', data: months.map(m => m.units), backgroundColor: '#ee4d2d', borderRadius: 4 }]
+    },
+    options: { responsive: true, maintainAspectRatio: true, aspectRatio: 3.5, plugins: { legend: { display: false } }, scales: { x: { ticks: chartDefaults, grid: { color: '#2e2a2a' } }, y: { ticks: chartDefaults, grid: { color: '#2e2a2a' } } } }
+  });
+}
+
+// ══════════════════════════════════════════
+//  PRODUCTS
+// ══════════════════════════════════════════
+function renderProducts() {
+  document.getElementById('products-sub').textContent = products.length + ' produto' + (products.length !== 1 ? 's' : '') + ' cadastrado' + (products.length !== 1 ? 's' : '');
+  const tbody = document.getElementById('products-tbody');
+  tbody.innerHTML = '';
+
+  if (products.length === 0) {
+    document.getElementById('products-empty').style.display = 'block';
+    return;
+  }
+  document.getElementById('products-empty').style.display = 'none';
+
+  products.forEach(p => {
+    const c = calcProfit(p, p.price);
+    const margin = c.margin.toFixed(1);
+    const badgeClass = c.margin > 30 ? 'badge-green' : c.margin > 15 ? 'badge-yellow' : 'badge-red';
+    const profitColor = c.profit > 0 ? 'var(--green)' : 'var(--accent2)';
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td><div class="td-name">${p.name}</div>${p.notes ? `<div class="td-sub">${p.notes}</div>` : ''}</td>
+      <td><span class="badge badge-cat">${p.category}</span></td>
+      <td style="font-weight:600">${fmt(p.price)}</td>
+      <td style="color:var(--text2)">${fmt(c.total)}</td>
+      <td style="font-weight:600;color:${profitColor}">${fmt(c.profit)}</td>
+      <td><span class="badge ${badgeClass}">${margin}%</span></td>
+      <td>
+        <button class="btn-icon" onclick="editProduct('${p.id}')">✏️</button>
+        <button class="btn-icon" onclick="deleteProduct('${p.id}')">🗑️</button>
+      </td>`;
+    tbody.appendChild(tr);
+  });
+}
+
+function openProductModal(id) {
+  populateFilamentSelect('p-filament');
+  document.getElementById('p-editing-id').value = '';
+  document.getElementById('product-modal-title').textContent = 'Novo Produto';
+  document.getElementById('p-name').value = '';
+  document.getElementById('p-cat').value = 'Decoração';
+  document.getElementById('p-price').value = '';
+  document.getElementById('p-grams').value = '';
+  document.getElementById('p-paint').value = '0';
+  document.getElementById('p-pkg').value = '0';
+  document.getElementById('p-notes').value = '';
+  document.getElementById('sim-box').style.display = 'none';
+  document.getElementById('product-modal').classList.add('open');
+}
+
+function editProduct(id) {
+  const p = products.find(x => x.id === id);
+  if (!p) return;
+  populateFilamentSelect('p-filament');
+  document.getElementById('p-editing-id').value = id;
+  document.getElementById('product-modal-title').textContent = 'Editar Produto';
+  document.getElementById('p-name').value    = p.name;
+  document.getElementById('p-cat').value     = p.category;
+  document.getElementById('p-price').value   = p.price;
+  document.getElementById('p-filament').value = p.filamentType;
+  document.getElementById('p-grams').value   = p.filamentGrams;
+  document.getElementById('p-paint').value   = p.paintCost;
+  document.getElementById('p-pkg').value     = p.packagingCost;
+  document.getElementById('p-notes').value   = p.notes;
+  updateSim();
+  document.getElementById('product-modal').classList.add('open');
+}
+
+function closeProductModal() { document.getElementById('product-modal').classList.remove('open'); }
+
+function saveProduct() {
+  const name  = document.getElementById('p-name').value.trim();
+  const price = parseFloat(document.getElementById('p-price').value);
+  const grams = parseFloat(document.getElementById('p-grams').value);
+  if (!name || isNaN(price) || isNaN(grams)) { alert('Preencha nome, preço e peso.'); return; }
+
+  const data = {
+    name,
+    category:      document.getElementById('p-cat').value,
+    price,
+    filamentType:  document.getElementById('p-filament').value,
+    filamentGrams: grams,
+    paintCost:     parseFloat(document.getElementById('p-paint').value) || 0,
+    packagingCost: parseFloat(document.getElementById('p-pkg').value) || 0,
+    notes:         document.getElementById('p-notes').value.trim(),
+  };
+
+  const editingId = document.getElementById('p-editing-id').value;
+  if (editingId) {
+    products = products.map(p => p.id === editingId ? { ...p, ...data } : p);
+  } else {
+    products.push({ ...data, id: Date.now().toString() });
+  }
+  save('pl_products', products);
+  closeProductModal();
+  renderProducts();
+}
+
+function deleteProduct(id) {
+  if (!confirm('Remover produto?')) return;
+  products = products.filter(p => p.id !== id);
+  save('pl_products', products);
+  renderProducts();
+}
+
+function updateSim() {
+  const price = parseFloat(document.getElementById('p-price').value);
+  const grams = parseFloat(document.getElementById('p-grams').value);
+  if (isNaN(price) || isNaN(grams) || grams <= 0 || price <= 0) { document.getElementById('sim-box').style.display = 'none'; return; }
+
+  const filId = document.getElementById('p-filament').value;
+  const paint = parseFloat(document.getElementById('p-paint').value) || 0;
+  const pkg   = parseFloat(document.getElementById('p-pkg').value) || 0;
+  const pseudo = { filamentType: filId, filamentGrams: grams, paintCost: paint, packagingCost: pkg };
+  const c = calcProfit(pseudo, price);
+
+  document.getElementById('sim-fil').textContent         = fmt(c.filC);
+  document.getElementById('sim-paint').textContent       = fmt(c.paintCost);
+  document.getElementById('sim-pkg').textContent         = fmt(c.packagingCost);
+  document.getElementById('sim-commission').textContent  = fmt(c.commission);
+  document.getElementById('sim-transaction').textContent = fmt(c.transaction);
+  document.getElementById('sim-itemfee').textContent     = fmt(c.itemFee);
+  document.getElementById('sim-devol').textContent       = fmt(c.devolFee);
+  document.getElementById('sim-total').textContent       = fmt(c.total);
+  document.getElementById('sim-profit').textContent      = fmt(c.profit) + ' (' + c.margin.toFixed(1) + '%)';
+  document.getElementById('sim-profit').style.color      = c.profit > 0 ? 'var(--green)' : 'var(--accent2)';
+
+  const box = document.getElementById('sim-box');
+  box.style.display = 'block';
+  box.className = 'sim-box ' + (c.profit > 0 ? 'profit' : 'loss');
+}
+
+// ══════════════════════════════════════════
+//  SALES
+// ══════════════════════════════════════════
+function renderSales() {
+  document.getElementById('sales-sub').textContent = sales.length + ' registro' + (sales.length !== 1 ? 's' : '') + ' no total';
+
+  // Populate month filter
+  const months = [...new Set(sales.map(s => s.date.slice(0,7)))].sort().reverse();
+  const filter = document.getElementById('sales-filter');
+  const current = filter.value;
+  filter.innerHTML = '<option value="">Todos os meses</option>' + months.map(m => `<option value="${m}"${m===current?' selected':''}>${m}</option>`).join('');
+
+  const filtered = current ? sales.filter(s => s.date.startsWith(current)) : sales;
+  const sorted   = [...filtered].sort((a,b) => b.date.localeCompare(a.date));
+
+  let rev = 0, profit = 0, units = 0;
+  sorted.forEach(s => {
+    const p = products.find(x => x.id === s.productId);
+    if (!p) return;
+    rev    += s.salePrice * s.qty;
+    profit += calcProfit(p, s.salePrice).profit * s.qty;
+    units  += s.qty;
+  });
+
+  document.getElementById('sales-rev').textContent    = fmt(rev);
+  document.getElementById('sales-profit').textContent = fmt(profit);
+  document.getElementById('sales-units').textContent  = units;
+
+  const tbody = document.getElementById('sales-tbody');
+  tbody.innerHTML = '';
+
+  if (sorted.length === 0) { document.getElementById('sales-empty').style.display = 'block'; return; }
+  document.getElementById('sales-empty').style.display = 'none';
+
+  sorted.forEach(s => {
+    const p = products.find(x => x.id === s.productId);
+    if (!p) return;
+    const c = calcProfit(p, s.salePrice);
+    const totalP = c.profit * s.qty;
+    const [y,mo,d] = s.date.split('-');
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td style="color:var(--text2)">${d}/${mo}/${y.slice(2)}</td>
+      <td style="font-weight:500">${p.name}</td>
+      <td>${s.qty}</td>
+      <td>${fmt(s.salePrice)}</td>
+      <td style="font-weight:600">${fmt(s.salePrice * s.qty)}</td>
+      <td style="font-weight:600;color:${totalP>0?'var(--green)':'var(--accent2)'}">${fmt(totalP)}</td>
+      <td><button class="btn-icon" onclick="deleteSale('${s.id}')">🗑️</button></td>`;
+    tbody.appendChild(tr);
+  });
+}
+
+function openSaleModal() {
+  const sel = document.getElementById('s-product');
+  sel.innerHTML = products.map(p => `<option value="${p.id}">${p.name}</option>`).join('');
+  document.getElementById('s-date').value  = new Date().toISOString().slice(0,10);
+  document.getElementById('s-qty').value   = 1;
+  if (products.length > 0) document.getElementById('s-price').value = products[0].price;
+  updateSaleSim();
+  document.getElementById('sale-modal').classList.add('open');
+}
+
+function closeSaleModal() { document.getElementById('sale-modal').classList.remove('open'); }
+
+function onSaleProductChange() {
+  const id = document.getElementById('s-product').value;
+  const p  = products.find(x => x.id === id);
+  if (p) document.getElementById('s-price').value = p.price;
+  updateSaleSim();
+}
+
+function updateSaleSim() {
+  const id    = document.getElementById('s-product').value;
+  const price = parseFloat(document.getElementById('s-price').value);
+  const qty   = parseInt(document.getElementById('s-qty').value) || 1;
+  const p     = products.find(x => x.id === id);
+  if (!p || isNaN(price) || price <= 0) { document.getElementById('sale-sim').style.display = 'none'; return; }
+
+  const c = calcProfit(p, price);
+  document.getElementById('ss-cost').textContent   = fmt(c.total);
+  document.getElementById('ss-profit').textContent = fmt(c.profit);
+  document.getElementById('ss-profit').style.color = c.profit > 0 ? 'var(--green)' : 'var(--accent2)';
+  document.getElementById('ss-margin').textContent = c.margin.toFixed(1) + '%';
+  if (qty > 1) {
+    document.getElementById('ss-total-label').textContent = `Lucro Total (${qty}x)`;
+    document.getElementById('ss-total').textContent = fmt(c.profit * qty);
+    document.getElementById('ss-total-wrap').style.display = 'block';
+  } else {
+    document.getElementById('ss-total-wrap').style.display = 'none';
+  }
+  document.getElementById('sale-sim').style.display = 'block';
+}
+
+function saveSale() {
+  const productId  = document.getElementById('s-product').value;
+  const date       = document.getElementById('s-date').value;
+  const qty        = parseInt(document.getElementById('s-qty').value);
+  const salePrice  = parseFloat(document.getElementById('s-price').value);
+  if (!productId || !date || isNaN(qty) || isNaN(salePrice)) { alert('Preencha todos os campos.'); return; }
+
+  sales.push({ id: Date.now().toString(), productId, date, qty, salePrice });
+  save('pl_sales', sales);
+  closeSaleModal();
+  renderSales();
+}
+
+function deleteSale(id) {
+  if (!confirm('Remover venda?')) return;
+  sales = sales.filter(s => s.id !== id);
+  save('pl_sales', sales);
+  renderSales();
+}
+
+// ══════════════════════════════════════════
+//  SETTINGS
+// ══════════════════════════════════════════
+function renderSettings() {
+  const list = document.getElementById('presets-list');
+  list.innerHTML = '';
+  filaments.forEach(f => {
+    const row = document.createElement('div');
+    row.className = 'preset-row';
+    row.dataset.id = f.id;
+    row.innerHTML = `
+      <input type="text" value="${f.name}" class="preset-name" />
+      <input type="number" value="${f.pricePerKg}" class="preset-price" step="1" min="1" />
+      <button class="btn-icon" onclick="removePreset('${f.id}')">🗑️</button>`;
+    list.appendChild(row);
+  });
+}
+
+function addPresetRow() {
+  const newId = Date.now().toString();
+  filaments.push({ id: newId, name: 'Novo Filamento', pricePerKg: 100 });
+  renderSettings();
+}
+
+function removePreset(id) {
+  filaments = filaments.filter(f => f.id !== id);
+  renderSettings();
+}
+
+function savePresets() {
+  const rows = document.querySelectorAll('#presets-list .preset-row');
+  filaments = [...rows].map(row => ({
+    id: row.dataset.id,
+    name: row.querySelector('.preset-name').value.trim(),
+    pricePerKg: parseFloat(row.querySelector('.preset-price').value) || 100,
+  }));
+  save('pl_filaments', filaments);
+  const btn = document.getElementById('save-btn');
+  btn.textContent = '✅ Salvo!';
+  setTimeout(() => btn.textContent = '💾 Salvar Configurações', 2000);
+}
+
+function populateFilamentSelect(selectId) {
+  const sel = document.getElementById(selectId);
+  sel.innerHTML = filaments.map(f => `<option value="${f.id}">${f.name} (R$${f.pricePerKg}/kg)</option>`).join('');
+}
+
+
+// ══════════════════════════════════════════
+//  EXPORT / IMPORT
+// ══════════════════════════════════════════
+function exportData() {
+  const data = {
+    version: 1,
+    exportedAt: new Date().toISOString(),
+    filaments,
+    products,
+    sales,
+  };
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href     = url;
+  a.download = 'printlab-backup-' + new Date().toISOString().slice(0,10) + '.json';
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function importData(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      const data = JSON.parse(e.target.result);
+      if (!data.products || !data.sales) throw new Error('Arquivo inválido');
+
+      if (!confirm(`Importar ${data.products.length} produtos e ${data.sales.length} vendas? Os dados atuais serão substituídos.`)) return;
+
+      filaments = data.filaments || DEFAULT_FILAMENTS;
+      products  = data.products;
+      sales     = data.sales;
+      save('pl_filaments', filaments);
+      save('pl_products',  products);
+      save('pl_sales',     sales);
+
+      const msg = document.getElementById('import-msg');
+      msg.style.display = 'block';
+      msg.textContent   = `✅ Importado com sucesso! ${products.length} produtos e ${sales.length} vendas carregados.`;
+      setTimeout(() => msg.style.display = 'none', 4000);
+
+      renderSettings();
+    } catch (err) {
+      alert('Erro ao importar: ' + err.message);
+    }
+  };
+  reader.readAsText(file);
+  event.target.value = '';
+}
+// ══════════════════════════════════════════
+//  INIT
+// ══════════════════════════════════════════
+renderDashboard();
+</script>
+</body>
+</html>
