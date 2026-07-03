@@ -406,6 +406,22 @@
     .preset-row { display: grid; grid-template-columns: 1fr 1fr auto; gap: 12px; align-items: center; margin-bottom: 10px; }
     .info-box { background: rgba(96,165,250,0.07); border: 1px solid rgba(96,165,250,0.2); border-radius: var(--r); padding: 18px 20px; }
     .rank-tab { padding: 7px 16px; border-radius: 7px; border: none; background: transparent; color: var(--text2); font-size: 13px; cursor: pointer; font-family: 'DM Sans',sans-serif; transition: all 0.15s; }
+    .asst-msg { display: flex; gap: 10px; max-width: 88%; }
+    .asst-msg.user { align-self: flex-end; flex-direction: row-reverse; }
+    .asst-avatar { width: 30px; height: 30px; border-radius: 8px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 15px; }
+    .asst-avatar.ai { background: rgba(167,139,250,0.15); }
+    .asst-avatar.user { background: rgba(59,130,246,0.15); }
+    .asst-bubble { padding: 12px 15px; border-radius: 12px; font-size: 14px; line-height: 1.6; white-space: pre-wrap; }
+    .asst-msg.ai .asst-bubble { background: var(--bg2); border: 0.5px solid var(--border); border-top-left-radius: 3px; }
+    .asst-msg.user .asst-bubble { background: rgba(59,130,246,0.12); border: 0.5px solid rgba(59,130,246,0.2); border-top-right-radius: 3px; }
+    .asst-suggest { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
+    .asst-suggest-btn { font-size: 12px; padding: 7px 13px; border-radius: 20px; border: 0.5px solid var(--border); background: var(--bg3); color: var(--text2); cursor: pointer; transition: all 0.15s; text-align: left; }
+    .asst-suggest-btn:hover { border-color: var(--accent); color: var(--text); }
+    .asst-typing { display: inline-flex; gap: 3px; }
+    .asst-typing span { width: 6px; height: 6px; border-radius: 50%; background: var(--text3); animation: asstBlink 1.2s infinite; }
+    .asst-typing span:nth-child(2) { animation-delay: 0.2s; }
+    .asst-typing span:nth-child(3) { animation-delay: 0.4s; }
+    @keyframes asstBlink { 0%,60%,100% { opacity: 0.3; } 30% { opacity: 1; } }
     .score-card { display: flex; align-items: center; gap: 16px; background: var(--bg2); border: 0.5px solid var(--border); border-radius: 14px; padding: 16px 18px; margin-bottom: 10px; cursor: pointer; transition: border-color 0.15s; }
     .score-card:hover { border-color: rgba(59,130,246,0.4); }
     .score-badge { width: 56px; height: 56px; border-radius: 14px; display: flex; flex-direction: column; align-items: center; justify-content: center; flex-shrink: 0; }
@@ -793,6 +809,9 @@
         <button class="nav-btn" onclick="navigate('score')">
           <i class="ti ti-star nb-icon" aria-hidden="true"></i> Score de Produtos
         </button>
+        <button class="nav-btn" onclick="navigate('assistant')">
+          <i class="ti ti-sparkles nb-icon" aria-hidden="true"></i> Assistente IA
+        </button>
         <button class="nav-btn" onclick="navigate('seasonality')">
           <i class="ti ti-chart-area nb-icon" aria-hidden="true"></i> Sazonalidade
         </button>
@@ -870,6 +889,10 @@
       <button class="more-item" onclick="navMore('score')">
         <span class="more-icon">⭐</span>
         <span class="more-label">Score</span>
+      </button>
+      <button class="more-item" onclick="navMore('assistant')">
+        <span class="more-icon">✨</span>
+        <span class="more-label">Assistente IA</span>
       </button>
       <button class="more-item" onclick="navMore('seasonality')">
         <span class="more-icon">🌡️</span>
@@ -966,6 +989,89 @@
     </div>
   </div>
 </div>
+
+<!-- GERADOR DE ANÚNCIO IA -->
+<div class="modal-overlay" id="ad-modal">
+  <div class="modal" style="max-width:640px">
+    <div class="modal-header">
+      <div class="modal-title">✨ Gerador de Anúncio Shopee</div>
+      <button class="modal-close" onclick="closeAdGenerator()">×</button>
+    </div>
+
+    <div style="font-size:13px;color:var(--text2);margin-bottom:18px;line-height:1.6">
+      Descreva seu produto e a IA gera título e descrição otimizados para a Shopee. Quanto mais detalhes, melhor o resultado.
+    </div>
+
+    <!-- Preencher a partir de produto existente -->
+    <div class="field">
+      <label>Preencher a partir de um produto cadastrado <span style="font-weight:400;color:var(--text3);font-size:11px">(opcional)</span></label>
+      <select id="ad-product-select" onchange="fillAdFromProduct()">
+        <option value="">— Preencher manualmente —</option>
+      </select>
+    </div>
+
+    <div class="field">
+      <label>Nome / tipo do produto *</label>
+      <input id="ad-name" placeholder="Ex: Cachorrinho decorativo 3D estilo amigurumi" />
+    </div>
+
+    <div class="grid-2" style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+      <div class="field">
+        <label>Categoria</label>
+        <input id="ad-category" placeholder="Ex: Decoração, Ferramenta, Organização" />
+      </div>
+      <div class="field">
+        <label>Público-alvo</label>
+        <input id="ad-audience" placeholder="Ex: amantes de pets, uso doméstico" />
+      </div>
+    </div>
+
+    <div class="field">
+      <label>Características e diferenciais *</label>
+      <textarea id="ad-features" rows="3" placeholder="Ex: textura de crochê, pintado à mão, tamanho 5cm, vendido em kit de 2, cores variadas, personalização sob encomenda" style="width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:10px 12px;color:var(--text);font-size:14px;font-family:inherit;resize:vertical"></textarea>
+    </div>
+
+    <div class="grid-2" style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+      <div class="field">
+        <label>Preço (opcional)</label>
+        <input id="ad-price" placeholder="Ex: R$ 22,90" />
+      </div>
+      <div class="field">
+        <label>Tom do texto</label>
+        <select id="ad-tone">
+          <option value="amigável e fofo">Amigável e fofo</option>
+          <option value="profissional e direto">Profissional e direto</option>
+          <option value="empolgante e vendedor">Empolgante e vendedor</option>
+          <option value="minimalista e clean">Minimalista e clean</option>
+        </select>
+      </div>
+    </div>
+
+    <div style="display:flex;gap:10px;margin-top:8px">
+      <button class="btn-primary" id="ad-generate-btn" onclick="generateAd()" style="flex:1;justify-content:center">✨ Gerar Anúncio</button>
+    </div>
+
+    <!-- Resultado -->
+    <div id="ad-result" style="display:none;margin-top:20px">
+      <div style="border-top:0.5px solid var(--border);padding-top:18px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+          <div style="font-size:12px;color:var(--accent2);font-weight:600;text-transform:uppercase;letter-spacing:0.05em">📌 Título</div>
+          <button onclick="copyAdField('ad-out-title')" style="font-size:11px;padding:4px 10px;border-radius:6px;border:0.5px solid var(--border);background:transparent;color:var(--text2);cursor:pointer">📋 Copiar</button>
+        </div>
+        <div id="ad-out-title" style="background:var(--bg3);border-radius:8px;padding:12px 14px;font-size:14px;line-height:1.5;margin-bottom:18px"></div>
+
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+          <div style="font-size:12px;color:var(--accent2);font-weight:600;text-transform:uppercase;letter-spacing:0.05em">📝 Descrição</div>
+          <button onclick="copyAdField('ad-out-desc')" style="font-size:11px;padding:4px 10px;border-radius:6px;border:0.5px solid var(--border);background:transparent;color:var(--text2);cursor:pointer">📋 Copiar</button>
+        </div>
+        <div id="ad-out-desc" style="background:var(--bg3);border-radius:8px;padding:12px 14px;font-size:13px;line-height:1.7;white-space:pre-wrap"></div>
+
+        <button class="btn-ghost" onclick="generateAd()" style="width:100%;margin-top:14px;justify-content:center">🔄 Gerar outra versão</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 
 <!-- MAIN -->
 <main id="main">
@@ -1182,7 +1288,10 @@
         <div class="page-sub" id="products-sub">0 produtos cadastrados</div>
         <div id="products-alert-banner" style="display:none;margin-top:6px;font-size:12px;color:#f87171"></div>
       </div>
-      <button class="btn-primary" onclick="openProductModal()">+ Novo Produto</button>
+      <div style="display:flex;gap:10px">
+        <button class="btn-ghost" onclick="openAdGenerator()" style="display:inline-flex;align-items:center;gap:6px">✨ Gerar Anúncio IA</button>
+        <button class="btn-primary" onclick="openProductModal()">+ Novo Produto</button>
+      </div>
     </div>
     <div class="table-wrap">
       <table>
@@ -1999,6 +2108,35 @@
   </div>
 
 
+  <!-- ══════════════ ASSISTENTE IA ══════════════ -->
+  <div class="page" id="page-assistant">
+    <div class="page-header">
+      <div>
+        <div class="page-title">✨ Assistente de Precificação</div>
+        <div class="page-sub">Pergunte sobre preços, margens e estratégia — a IA conhece seus custos</div>
+      </div>
+    </div>
+
+    <div style="display:flex;flex-direction:column;height:calc(100vh - 200px);min-height:400px">
+      <!-- Chat messages -->
+      <div id="assistant-messages" style="flex:1;overflow-y:auto;padding:4px 2px;display:flex;flex-direction:column;gap:14px">
+        <!-- Welcome message + suggestions inserted here -->
+      </div>
+
+      <!-- Input -->
+      <div style="border-top:0.5px solid var(--border);padding-top:14px;margin-top:14px">
+        <div style="display:flex;gap:10px;align-items:flex-end">
+          <textarea id="assistant-input" rows="1" placeholder="Ex: Qual preço ideal para o Kit Cachorrinhos?"
+            style="flex:1;background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:12px 14px;color:var(--text);font-size:14px;font-family:inherit;resize:none;max-height:120px"
+            onkeydown="assistantKeydown(event)"></textarea>
+          <button class="btn-primary" id="assistant-send" onclick="sendAssistantMessage()" style="padding:12px 18px">➤</button>
+        </div>
+        <div style="font-size:11px;color:var(--text3);margin-top:8px;text-align:center">O assistente considera seus produtos, custos e taxas reais da Shopee.</div>
+      </div>
+    </div>
+  </div>
+
+
 </main>
 
 <!-- ══════════════ EXPENSE MODAL ══════════════ -->
@@ -2607,7 +2745,7 @@ function navigate(page) {
   const pageGroups = {
     home: 'ng-principal', dashboard: 'ng-principal', products: 'ng-principal', sales: 'ng-principal',
     expenses: 'ng-financeiro', breakeven: 'ng-financeiro',
-    ranking: 'ng-analises', seasonality: 'ng-analises', analysis: 'ng-analises', pricehistory: 'ng-analises', projection: 'ng-analises', calendar: 'ng-analises', score: 'ng-analises',
+    ranking: 'ng-analises', seasonality: 'ng-analises', analysis: 'ng-analises', pricehistory: 'ng-analises', projection: 'ng-analises', calendar: 'ng-analises', score: 'ng-analises', assistant: 'ng-analises',
     settings: 'ng-sistema',
   };
   const groupId = pageGroups[page];
@@ -2629,6 +2767,7 @@ function navigate(page) {
   if (page === 'breakeven')   renderBreakeven();
   if (page === 'ranking')      renderRanking();
   if (page === 'score')        renderScore();
+  if (page === 'assistant')    renderAssistant();
   if (page === 'pricehistory') renderPriceHistory();
   if (page === 'projection')   renderProjection();
   if (page === 'calendar')     renderCalendar();
@@ -3582,6 +3721,300 @@ function renderGoalCard(curRev, curProfit, curUnits) {
   document.getElementById('goal-days-label').textContent = daysLeft + ' dias restantes no mês';
 }
 
+
+
+
+// ══════════════════════════════════════════
+//  ASSISTENTE DE PRECIFICAÇÃO IA
+// ══════════════════════════════════════════
+let _assistantHistory = [];
+
+function renderAssistant() {
+  const container = document.getElementById('assistant-messages');
+  if (_assistantHistory.length === 0) {
+    // Welcome message with suggestions
+    container.innerHTML = `
+      <div class="asst-msg ai">
+        <div class="asst-avatar ai">✨</div>
+        <div>
+          <div class="asst-bubble">Olá! Sou seu assistente de precificação. Conheço seus produtos, custos e as taxas da Shopee. Como posso ajudar?</div>
+          <div class="asst-suggest" id="asst-suggestions"></div>
+        </div>
+      </div>`;
+
+    // Build dynamic suggestions from real products
+    const suggestions = [];
+    if (products.length > 0) {
+      const firstProd = products[0].name;
+      suggestions.push(`Qual o preço ideal para "${firstProd}"?`);
+    }
+    suggestions.push('Quais produtos têm a menor margem?');
+    suggestions.push('Devo aumentar algum preço?');
+    suggestions.push('Como está a saúde financeira da loja?');
+
+    const sugEl = document.getElementById('asst-suggestions');
+    if (sugEl) sugEl.innerHTML = suggestions.map(s =>
+      `<button class="asst-suggest-btn" onclick="askAssistant('${s.replace(/'/g, "\\'")}')">${s}</button>`
+    ).join('');
+  }
+}
+
+function assistantKeydown(e) {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    sendAssistantMessage();
+  }
+  // Auto-resize
+  const ta = e.target;
+  ta.style.height = 'auto';
+  ta.style.height = Math.min(ta.scrollHeight, 120) + 'px';
+}
+
+function askAssistant(text) {
+  document.getElementById('assistant-input').value = text;
+  sendAssistantMessage();
+}
+
+function addAssistantMsg(role, text) {
+  const container = document.getElementById('assistant-messages');
+  // Remove welcome suggestions on first real message
+  if (_assistantHistory.length === 0) container.innerHTML = '';
+
+  const div = document.createElement('div');
+  div.className = 'asst-msg ' + (role === 'user' ? 'user' : 'ai');
+  div.innerHTML = `
+    <div class="asst-avatar ${role === 'user' ? 'user' : 'ai'}">${role === 'user' ? '🧑' : '✨'}</div>
+    <div class="asst-bubble">${text}</div>`;
+  container.appendChild(div);
+  container.scrollTop = container.scrollHeight;
+  return div;
+}
+
+function buildBusinessContext() {
+  // Compile a snapshot of the store's real data for the AI
+  const ctx = { produtos: [], resumo: {} };
+
+  products.forEach(p => {
+    const c = calcCost(p, p.price, 1);
+    const prof = calcProfitTotal(p, p.price, 1);
+    ctx.produtos.push({
+      nome: p.name,
+      categoria: p.category,
+      preco: +p.price.toFixed(2),
+      custoProducao: +(c.filC + p.paintCost + p.packagingCost).toFixed(2),
+      custoTotal: +c.total.toFixed(2),
+      lucroEstimado: +prof.totalProfit.toFixed(2),
+      margem: +prof.margin.toFixed(1),
+      variacoes: (p.variations || []).map(v => ({ nome: v.name, preco: v.price })),
+    });
+  });
+
+  // Sales summary (last 90 days)
+  const now = new Date();
+  const cutoff = new Date(now.getTime() - 90*24*60*60*1000).toISOString().slice(0,10);
+  const recentSales = sales.filter(s => s.date >= cutoff);
+  let totalRev = 0, totalProfit = 0, totalUnits = 0;
+  const prodSales = {};
+  recentSales.forEach(s => {
+    const p = products.find(x => x.id === s.productId); if (!p) return;
+    const rev = s.salePrice * s.qty;
+    totalRev += rev;
+    totalProfit += calcProfitTotal(p, s.salePrice, s.qty, s._shopeeTotal).totalProfit;
+    totalUnits += s.qty;
+    prodSales[p.name] = (prodSales[p.name] || 0) + s.qty;
+  });
+
+  ctx.resumo = {
+    receita90dias: +totalRev.toFixed(2),
+    lucro90dias: +totalProfit.toFixed(2),
+    unidadesVendidas90dias: totalUnits,
+    maisVendidos: Object.entries(prodSales).sort((a,b)=>b[1]-a[1]).slice(0,5).map(([n,q]) => `${n} (${q} un.)`),
+  };
+
+  ctx.taxasShopee = {
+    comissao: (SHOPEE_COMMISSION*100) + '%',
+    transacao: (SHOPEE_TRANSACTION*100) + '%',
+    taxaItem: 'R$ ' + SHOPEE_ITEM_FEE.toFixed(2),
+    taxaDevolucao: 'R$ ' + SHOPEE_DEVOL_FEE.toFixed(2),
+  };
+  ctx.taxaPerda = wasteRate.enabled ? wasteRate.percent + '%' : 'desativada';
+
+  return ctx;
+}
+
+async function sendAssistantMessage() {
+  const input = document.getElementById('assistant-input');
+  const text = input.value.trim();
+  if (!text) return;
+
+  addAssistantMsg('user', text);
+  _assistantHistory.push({ role: 'user', content: text });
+  input.value = '';
+  input.style.height = 'auto';
+
+  const btn = document.getElementById('assistant-send');
+  btn.disabled = true;
+
+  // Typing indicator
+  const typingDiv = addAssistantMsg('ai', '<div class="asst-typing"><span></span><span></span><span></span></div>');
+
+  const context = buildBusinessContext();
+
+  const systemPrompt = `Você é um consultor de precificação e negócios especializado em pequenos fabricantes que vendem na Shopee (impressão 3D e artesanato). Você está integrado ao dashboard financeiro "Print Lab" e tem acesso aos dados reais da loja.
+
+DADOS ATUAIS DA LOJA (em JSON):
+${JSON.stringify(context, null, 2)}
+
+INSTRUÇÕES:
+- Responda de forma direta, prática e honesta, em português brasileiro.
+- Use os dados reais acima para embasar suas respostas com números concretos.
+- Ao sugerir preços, considere o custo de produção, as taxas da Shopee e a margem desejada.
+- Seja conciso — respostas de 2 a 5 frases quando possível. Use listas curtas se ajudar.
+- Se faltar informação, diga o que precisa saber.
+- Não invente dados que não estão no contexto. 
+- Valores sempre em R$.
+- Lembre que o preço ideal = (custo + taxas fixas) / (1 - margem - taxa variável Shopee 20%).`;
+
+  try {
+    const messages = _assistantHistory.slice(-10).map(m => ({ role: m.role, content: m.content }));
+
+    const response = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: "claude-sonnet-4-6",
+        max_tokens: 1000,
+        system: systemPrompt,
+        messages: messages,
+      })
+    });
+
+    const data = await response.json();
+    const reply = data.content.map(i => i.text || "").join("").trim();
+
+    typingDiv.remove();
+    addAssistantMsg('ai', reply);
+    _assistantHistory.push({ role: 'assistant', content: reply });
+  } catch (err) {
+    typingDiv.remove();
+    addAssistantMsg('ai', '⚠️ Não consegui responder agora: ' + err.message + '\n\nObservação: o assistente de IA funciona dentro do ambiente Claude. No GitHub Pages, precisa de um proxy com chave de API.');
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+// ══════════════════════════════════════════
+//  GERADOR DE ANÚNCIO IA
+// ══════════════════════════════════════════
+function openAdGenerator() {
+  // Populate product dropdown
+  const sel = document.getElementById('ad-product-select');
+  sel.innerHTML = '<option value="">— Preencher manualmente —</option>' +
+    products.map(p => `<option value="${p.id}">${p.name}</option>`).join('');
+  // Clear fields
+  ['ad-name','ad-category','ad-audience','ad-features','ad-price'].forEach(id => {
+    const el = document.getElementById(id); if (el) el.value = '';
+  });
+  document.getElementById('ad-result').style.display = 'none';
+  document.getElementById('ad-modal').classList.add('open');
+}
+
+function closeAdGenerator() {
+  document.getElementById('ad-modal').classList.remove('open');
+}
+
+function fillAdFromProduct() {
+  const id = document.getElementById('ad-product-select').value;
+  const p = products.find(x => x.id === id);
+  if (!p) return;
+  document.getElementById('ad-name').value     = p.name || '';
+  document.getElementById('ad-category').value = p.category || '';
+  document.getElementById('ad-price').value    = p.price ? 'R$ ' + p.price.toFixed(2) : '';
+  // Build features from product data
+  let feats = [];
+  if (p.variations && p.variations.length) feats.push('variações: ' + p.variations.map(v=>v.name).join(', '));
+  if (p.notes) feats.push(p.notes);
+  if (p.shopeeName) feats.push('nome atual: ' + p.shopeeName);
+  document.getElementById('ad-features').value = feats.join('. ');
+}
+
+async function generateAd() {
+  const name     = document.getElementById('ad-name').value.trim();
+  const features = document.getElementById('ad-features').value.trim();
+  if (!name || !features) {
+    alert('Preencha ao menos o nome e as características do produto.');
+    return;
+  }
+
+  const category = document.getElementById('ad-category').value.trim();
+  const audience = document.getElementById('ad-audience').value.trim();
+  const price    = document.getElementById('ad-price').value.trim();
+  const tone     = document.getElementById('ad-tone').value;
+
+  const btn = document.getElementById('ad-generate-btn');
+  const origText = btn.textContent;
+  btn.textContent = '✨ Gerando...';
+  btn.disabled = true;
+
+  const prompt = `Você é um especialista em copywriting para a Shopee brasileira. Crie um título e uma descrição de anúncio otimizados para vendas.
+
+DADOS DO PRODUTO:
+- Nome/tipo: ${name}
+${category ? '- Categoria: ' + category : ''}
+${audience ? '- Público-alvo: ' + audience : ''}
+${price ? '- Preço: ' + price : ''}
+- Características e diferenciais: ${features}
+- Tom desejado: ${tone}
+
+REGRAS:
+1. TÍTULO: máximo 120 caracteres, com palavras-chave importantes no início para SEO da Shopee. Sem emojis no título.
+2. DESCRIÇÃO: use emojis, seções organizadas, bullet points com •, destaque benefícios e diferenciais. Inclua seções como benefícios, o que vem no kit (se aplicável), como usar, para quem é, e uma chamada final. Termine com convite para chamar no chat.
+3. Seja persuasivo mas honesto. Não invente características que não foram informadas.
+4. Escreva em português brasileiro.
+
+Responda APENAS com um JSON válido, sem markdown, no formato exato:
+{"titulo": "...", "descricao": "..."}`;
+
+  try {
+    const response = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: "claude-sonnet-4-6",
+        max_tokens: 1500,
+        messages: [{ role: "user", content: prompt }],
+      })
+    });
+
+    const data = await response.json();
+    let text = data.content.map(i => i.text || "").join("").trim();
+    // Strip markdown fences if present
+    text = text.replace(/```json|```/g, "").trim();
+    const parsed = JSON.parse(text);
+
+    document.getElementById('ad-out-title').textContent = parsed.titulo;
+    document.getElementById('ad-out-desc').textContent  = parsed.descricao;
+    document.getElementById('ad-result').style.display  = 'block';
+    document.getElementById('ad-result').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  } catch (err) {
+    alert('Erro ao gerar anúncio: ' + err.message + '. Tente novamente.');
+    console.error(err);
+  } finally {
+    btn.textContent = origText;
+    btn.disabled = false;
+  }
+}
+
+function copyAdField(id) {
+  const text = document.getElementById(id).textContent;
+  navigator.clipboard.writeText(text).then(() => {
+    // Brief visual feedback via the button that was clicked
+    const btn = event.target;
+    const orig = btn.textContent;
+    btn.textContent = '✅ Copiado!';
+    setTimeout(() => btn.textContent = orig, 1500);
+  });
+}
 
 // ══════════════════════════════════════════
 //  SCORE DE PRODUTOS
