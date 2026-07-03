@@ -626,6 +626,8 @@
 
       /* Home 2-col layout: empilha em mobile */
       #home-2col { grid-template-columns: 1fr !important; }
+      #therm-body > div { flex-direction: column !important; }
+      #therm-body svg { max-width: 180px; }
 
       /* Home recent sales: fonte menor */
       #home-recent-sales > div { gap: 8px !important; }
@@ -1106,6 +1108,34 @@
         <div class="kpi-card k4" style="padding:16px">
           <div><div class="kpi-label">Unidades hoje</div><div class="kpi-value" id="home-today-units" style="color:#a78bfa;font-size:20px">—</div></div>
           <div class="kpi-icon" style="width:32px;height:32px;font-size:14px">📦</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Termômetro do mês -->
+    <div class="card" id="home-thermometer" style="margin-bottom:20px;padding:20px 22px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+        <div style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:0.08em">🔥 Termômetro do mês</div>
+        <div id="therm-verdict" style="font-size:12px;font-weight:600;padding:4px 12px;border-radius:20px"></div>
+      </div>
+      <div id="therm-body">
+        <!-- Gauge -->
+        <div style="display:flex;align-items:center;gap:20px;flex-wrap:wrap">
+          <div style="flex:1;min-width:200px">
+            <div id="therm-metrics" style="display:flex;flex-direction:column;gap:12px"></div>
+          </div>
+          <div style="width:150px;text-align:center">
+            <div style="position:relative;width:150px;height:80px;margin:0 auto">
+              <svg viewBox="0 0 150 80" style="width:100%;height:100%">
+                <path d="M 15 75 A 60 60 0 0 1 135 75" fill="none" stroke="var(--bg3)" stroke-width="12" stroke-linecap="round"/>
+                <path id="therm-arc" d="M 15 75 A 60 60 0 0 1 135 75" fill="none" stroke="var(--green)" stroke-width="12" stroke-linecap="round" stroke-dasharray="188.5" stroke-dashoffset="188.5" style="transition:stroke-dashoffset 0.8s ease, stroke 0.4s"/>
+              </svg>
+              <div style="position:absolute;bottom:0;left:0;right:0">
+                <div id="therm-gauge-val" style="font-family:'Syne',sans-serif;font-size:26px;font-weight:800;line-height:1">—</div>
+                <div style="font-size:10px;color:var(--text3)">vs mês anterior</div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -4416,6 +4446,111 @@ function renderBreakeven() {
 // ══════════════════════════════════════════
 //  PÁGINA INICIAL
 // ══════════════════════════════════════════
+
+// ══════════════════════════════════════════
+//  TERMÔMETRO DO MÊS
+// ══════════════════════════════════════════
+function renderThermometer(curM, monthRev, monthProfit, monthUnits) {
+  // Previous month key
+  const [y, m] = curM.split('-').map(Number);
+  const prevDate = new Date(y, m - 2, 1); // m is 1-indexed, -2 gives previous month
+  const prevM = prevDate.getFullYear() + '-' + String(prevDate.getMonth() + 1).padStart(2, '0');
+
+  // Compute previous month stats
+  let prevRev = 0, prevProfit = 0, prevUnits = 0;
+  sales.filter(s => s.date.startsWith(prevM)).forEach(s => {
+    const p = products.find(x => x.id === s.productId); if (!p) return;
+    prevRev    += s.salePrice * s.qty;
+    prevProfit += calcProfitTotal(p, s.salePrice, s.qty, s._shopeeTotal).totalProfit;
+    prevUnits  += s.qty;
+  });
+
+  // How far into the month are we? (for fair comparison, use same-day-of-month pace)
+  const now = new Date();
+  const dayOfMonth = now.getDate();
+  const daysInCurMonth = new Date(y, m, 0).getDate();
+  const monthProgress = dayOfMonth / daysInCurMonth;
+
+  // Delta percentages (current actual vs previous full month)
+  const revDelta    = prevRev > 0 ? (monthRev - prevRev) / prevRev * 100 : (monthRev > 0 ? 100 : 0);
+  const profitDelta = prevProfit > 0 ? (monthProfit - prevProfit) / prevProfit * 100 : (monthProfit > 0 ? 100 : 0);
+  const unitsDelta  = prevUnits > 0 ? (monthUnits - prevUnits) / prevUnits * 100 : (monthUnits > 0 ? 100 : 0);
+
+  // Projected end-of-month based on current pace
+  const projectedRev = monthProgress > 0 ? monthRev / monthProgress : monthRev;
+  const projectedDelta = prevRev > 0 ? (projectedRev - prevRev) / prevRev * 100 : (projectedRev > 0 ? 100 : 0);
+
+  // Main gauge value = revenue delta
+  const mainDelta = revDelta;
+
+  // Metrics rows
+  const metricRow = (label, cur, prev, delta) => {
+    const up = delta >= 0;
+    const col = delta > 2 ? '#4ade80' : delta < -2 ? '#f87171' : 'var(--text3)';
+    const arrow = delta > 2 ? '↑' : delta < -2 ? '↓' : '→';
+    return `<div style="display:flex;justify-content:space-between;align-items:center">
+      <div>
+        <div style="font-size:12px;color:var(--text2)">${label}</div>
+        <div style="font-size:15px;font-weight:600">${cur}</div>
+      </div>
+      <div style="text-align:right">
+        <div style="font-size:13px;font-weight:700;color:${col}">${arrow} ${up?'+':''}${delta.toFixed(0)}%</div>
+        <div style="font-size:10px;color:var(--text3)">mês ant.: ${prev}</div>
+      </div>
+    </div>`;
+  };
+
+  const metricsEl = document.getElementById('therm-metrics');
+  if (metricsEl) {
+    metricsEl.innerHTML =
+      metricRow('Receita', fmt(monthRev), fmt(prevRev), revDelta) +
+      metricRow('Lucro', fmt(monthProfit), fmt(prevProfit), profitDelta) +
+      metricRow('Unidades', monthUnits + ' un.', prevUnits + ' un.', unitsDelta);
+  }
+
+  // Gauge arc: map delta from -50%..+50% onto 0..full arc
+  const arcLen = 188.5;
+  const clamped = Math.max(-50, Math.min(50, mainDelta));
+  const fillPct = (clamped + 50) / 100; // 0..1
+  const arc = document.getElementById('therm-arc');
+  const gaugeVal = document.getElementById('therm-gauge-val');
+  const verdict = document.getElementById('therm-verdict');
+
+  let color, verdictText, verdictBg;
+  if (mainDelta > 15) {
+    color = '#4ade80'; verdictText = '🔥 Bombando!'; verdictBg = 'rgba(74,222,128,0.15)';
+  } else if (mainDelta > 2) {
+    color = '#4ade80'; verdictText = '📈 Crescendo'; verdictBg = 'rgba(74,222,128,0.12)';
+  } else if (mainDelta >= -2) {
+    color = '#fbbf24'; verdictText = '➡️ Estável'; verdictBg = 'rgba(251,191,36,0.12)';
+  } else if (mainDelta >= -15) {
+    color = '#fb923c'; verdictText = '📉 Desacelerando'; verdictBg = 'rgba(251,146,60,0.12)';
+  } else {
+    color = '#f87171'; verdictText = '⚠️ Atenção'; verdictBg = 'rgba(239,68,68,0.12)';
+  }
+
+  if (arc) {
+    arc.style.strokeDashoffset = arcLen * (1 - fillPct);
+    arc.style.stroke = color;
+  }
+  if (gaugeVal) {
+    gaugeVal.textContent = (mainDelta >= 0 ? '+' : '') + mainDelta.toFixed(0) + '%';
+    gaugeVal.style.color = color;
+  }
+  if (verdict) {
+    verdict.textContent = verdictText;
+    verdict.style.background = verdictBg;
+    verdict.style.color = color;
+  }
+
+  // If no previous data, show neutral state
+  if (prevRev === 0 && prevProfit === 0 && prevUnits === 0) {
+    if (verdict) { verdict.textContent = '🌱 Primeiro mês'; verdict.style.background = 'rgba(96,165,250,0.12)'; verdict.style.color = '#60a5fa'; }
+    if (gaugeVal) { gaugeVal.textContent = 'novo'; gaugeVal.style.color = '#60a5fa'; }
+    if (arc) { arc.style.strokeDashoffset = arcLen * 0.5; arc.style.stroke = '#60a5fa'; }
+  }
+}
+
 function renderHome() {
   const now   = new Date();
   const today = now.toISOString().slice(0,10);
@@ -4458,6 +4593,9 @@ function renderHome() {
   document.getElementById('home-month-rev').textContent    = fmt(monthRev);
   document.getElementById('home-month-profit').textContent = fmt(monthProfit);
   document.getElementById('home-month-units').textContent  = monthUnits + ' un.';
+
+  // ── TERMÔMETRO DO MÊS: compara mês atual com o mês anterior ──
+  renderThermometer(curM, monthRev, monthProfit, monthUnits);
 
   // Goal progress
   const goalWrap = document.getElementById('home-goal-wrap');
