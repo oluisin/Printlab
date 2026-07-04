@@ -945,6 +945,9 @@
         <button class="nav-btn" onclick="navigate('seasonality')">
           <i class="ti ti-chart-area nb-icon" aria-hidden="true"></i> Sazonalidade
         </button>
+        <button class="nav-btn" onclick="navigate('hours')">
+          <i class="ti ti-clock nb-icon" aria-hidden="true"></i> Horários de Venda
+        </button>
         <button class="nav-btn" onclick="navigate('pricehistory')">
           <i class="ti ti-history nb-icon" aria-hidden="true"></i> Histórico de Preços
         </button>
@@ -1024,6 +1027,10 @@
       <button class="more-item" onclick="navMore('seasonality')">
         <span class="more-icon">🌡️</span>
         <span class="more-label">Sazonalidade</span>
+      </button>
+      <button class="more-item" onclick="navMore('hours')">
+        <span class="more-icon">🕐</span>
+        <span class="more-label">Horários</span>
       </button>
       <button class="more-item" onclick="navMore('breakeven')">
         <span class="more-icon">⚖️</span>
@@ -2225,6 +2232,57 @@
   </div>
 
 
+  <!-- ══════════════ HORÁRIOS DE VENDA ══════════════ -->
+  <div class="page" id="page-hours">
+    <div class="page-header">
+      <div>
+        <div class="page-title">Horários de Venda</div>
+        <div class="page-sub">Quando você mais vende — por dia da semana e hora do dia</div>
+      </div>
+      <div class="filter-bar">
+        <select id="hours-metric" onchange="renderHours()" style="min-width:140px">
+          <option value="units">Unidades vendidas</option>
+          <option value="revenue">Receita</option>
+          <option value="count">Nº de pedidos</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Summary cards -->
+    <div class="summary-grid" style="grid-template-columns:repeat(3,1fr);margin-bottom:24px">
+      <div class="summary-card"><div class="summary-label">🔥 Horário Mais Forte</div><div class="summary-value" id="hr-best-hour" style="color:var(--green);font-size:18px">—</div></div>
+      <div class="summary-card"><div class="summary-label">📅 Dia Mais Forte</div><div class="summary-value" id="hr-best-day" style="color:var(--accent2);font-size:18px">—</div></div>
+      <div class="summary-card"><div class="summary-label">🌙 Horário Mais Fraco</div><div class="summary-value" id="hr-worst-hour" style="color:var(--text3);font-size:18px">—</div></div>
+    </div>
+
+    <!-- Heatmap -->
+    <div class="card" id="hours-heatmap-card" style="margin-bottom:20px;overflow-x:auto">
+      <div class="card-title">Mapa de Calor — Dia da Semana × Hora</div>
+      <div id="hr-heatmap" style="min-width:640px"></div>
+      <div style="display:flex;align-items:center;gap:8px;margin-top:14px;flex-wrap:wrap">
+        <span style="font-size:11px;color:var(--text3)">Intensidade:</span>
+        <div style="display:flex;gap:3px;align-items:center">
+          <div style="width:14px;height:14px;border-radius:3px;background:var(--bg3);border:0.5px solid var(--border)"></div>
+          <span style="font-size:10px;color:var(--text3)">Sem vendas</span>
+        </div>
+        <div style="display:flex;gap:3px;align-items:center;margin-left:8px">
+          <div style="width:14px;height:14px;border-radius:3px;background:rgba(59,130,246,0.9)"></div>
+          <span style="font-size:10px;color:var(--text3)">Pico de vendas</span>
+        </div>
+      </div>
+      <div id="hr-no-time-notice" style="display:none;margin-top:14px;font-size:12px;color:var(--yellow);background:rgba(251,191,36,0.08);border:0.5px solid rgba(251,191,36,0.2);border-radius:8px;padding:10px 12px;line-height:1.6"></div>
+    </div>
+
+    <!-- Info box -->
+    <div class="info-box">
+      <div style="font-size:13px;color:var(--blue);font-weight:600;margin-bottom:6px">💡 Como usar esse mapa</div>
+      <div style="font-size:13px;color:var(--text2);line-height:1.7">
+        Use esses horários de pico para saber quando responder o chat da Shopee mais rápido, quando lançar promoções relâmpago, ou quando um produto novo tem mais chance de ser visto. Vendas importadas do XLSX trazem o horário exato; vendas registradas manualmente usam a hora do registro.
+      </div>
+    </div>
+  </div>
+
+
 </main>
 
 <!-- ══════════════ EXPENSE MODAL ══════════════ -->
@@ -2409,6 +2467,14 @@
             <div class="sim-item-value" id="sim-profit" style="font-size:16px">—</div>
           </div>
         </div>
+      </div>
+
+      <!-- Composição do custo (gráfico de rosca) -->
+      <div id="sim-donut-wrap" style="border-top:0.5px solid var(--border);margin-top:10px;padding-top:14px;display:flex;align-items:center;gap:16px">
+        <div style="width:110px;height:110px;flex-shrink:0;position:relative">
+          <canvas id="sim-cost-donut"></canvas>
+        </div>
+        <div id="sim-donut-legend" style="flex:1;display:flex;flex-direction:column;gap:5px;font-size:11px"></div>
       </div>
       <div style="margin-top:12px;padding-top:10px;border-top:0.5px solid var(--border);font-size:11px;color:var(--text3);line-height:1.6">
         ⚠️ As taxas da Shopee são <strong style="color:var(--yellow)">estimativas</strong> baseadas nas taxas médias praticadas.<br>
@@ -2762,6 +2828,79 @@ function calcCost(p, price, qty) {
 }
 
 // calcProfit: lucro por unidade considerando qty do pedido
+
+// ══════════════════════════════════════════
+//  GRÁFICO DE ROSCA — COMPOSIÇÃO DO CUSTO
+// ══════════════════════════════════════════
+let _costDonutChart = null;
+
+function renderCostDonut(parts) {
+  const canvas = document.getElementById('sim-cost-donut');
+  const legendEl = document.getElementById('sim-donut-legend');
+  if (!canvas || typeof Chart === 'undefined') return;
+
+  // Monta os segmentos, ignorando os que são zero (ex: sem tinta, sem perda ativa)
+  const segments = [
+    { label: 'Filamento',     value: parts.filamento,   color: '#60a5fa' },
+    { label: 'Pintura',       value: parts.pintura,     color: '#a78bfa' },
+    { label: 'Embalagem',     value: parts.embalagem,   color: '#fbbf24' },
+    { label: 'Perda/Falha',   value: parts.perda,       color: '#fb923c' },
+    { label: 'Taxas Shopee',  value: parts.taxasShopee, color: '#f87171' },
+  ].filter(s => s.value > 0.001);
+
+  const total = segments.reduce((s, x) => s + x.value, 0);
+  if (total <= 0) {
+    if (_costDonutChart) { _costDonutChart.destroy(); _costDonutChart = null; }
+    legendEl.innerHTML = '';
+    return;
+  }
+
+  const data = segments.map(s => s.value);
+  const colors = segments.map(s => s.color);
+  const labels = segments.map(s => s.label);
+
+  if (_costDonutChart) {
+    // Atualiza o gráfico existente (evita recriar a cada tecla digitada)
+    _costDonutChart.data.labels = labels;
+    _costDonutChart.data.datasets[0].data = data;
+    _costDonutChart.data.datasets[0].backgroundColor = colors;
+    _costDonutChart.update('none');
+  } else {
+    _costDonutChart = new Chart(canvas.getContext('2d'), {
+      type: 'doughnut',
+      data: { labels, datasets: [{ data, backgroundColor: colors, borderWidth: 0 }] },
+      options: {
+        cutout: '68%',
+        responsive: true,
+        maintainAspectRatio: true,
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              label: (ctx) => {
+                const val = ctx.parsed;
+                const pct = (val / total * 100).toFixed(0);
+                return ' ' + fmt(val) + ' (' + pct + '%)';
+              }
+            }
+          }
+        }
+      }
+    });
+  }
+
+  // Legenda customizada (mais compacta e legível que a padrão do Chart.js)
+  legendEl.innerHTML = segments.map(s => {
+    const pct = (s.value / total * 100).toFixed(0);
+    return `<div style="display:flex;align-items:center;gap:6px">
+      <div style="width:8px;height:8px;border-radius:2px;background:${s.color};flex-shrink:0"></div>
+      <span style="color:var(--text2);flex:1">${s.label}</span>
+      <span style="color:var(--text);font-weight:600">${fmt(s.value)}</span>
+      <span style="color:var(--text3);width:32px;text-align:right">${pct}%</span>
+    </div>`;
+  }).join('');
+}
+
 function calcProfit(p, price, qty) {
   qty = qty || 1;
   const c      = calcCost(p, price, qty);
@@ -2902,7 +3041,7 @@ function navigate(page) {
   const pageGroups = {
     home: 'ng-principal', dashboard: 'ng-principal', products: 'ng-principal', sales: 'ng-principal',
     expenses: 'ng-financeiro', breakeven: 'ng-financeiro',
-    ranking: 'ng-analises', seasonality: 'ng-analises', analysis: 'ng-analises', pricehistory: 'ng-analises', projection: 'ng-analises', calendar: 'ng-analises', score: 'ng-analises',
+    ranking: 'ng-analises', seasonality: 'ng-analises', hours: 'ng-analises', analysis: 'ng-analises', pricehistory: 'ng-analises', projection: 'ng-analises', calendar: 'ng-analises', score: 'ng-analises',
     settings: 'ng-sistema',
   };
   const groupId = pageGroups[page];
@@ -2921,6 +3060,7 @@ function navigate(page) {
   if (page === 'settings')    renderSettings();
   if (page === 'analysis')    renderAnalysis();
   if (page === 'seasonality') renderSeasonality();
+  if (page === 'hours')       renderHours();
   if (page === 'breakeven')   renderBreakeven();
   if (page === 'ranking')      renderRanking();
   if (page === 'score')        renderScore();
@@ -3418,6 +3558,16 @@ function updateSim() {
   const box = document.getElementById('sim-box');
   box.style.display = 'block';
   box.className = 'sim-box ' + (c.profit > 0 ? 'profit' : 'loss');
+
+  // Gráfico de rosca — composição do custo total
+  const wasteForDonut = (wasteRate.enabled && wm2 > 1) ? wasteAmt : 0;
+  renderCostDonut({
+    filamento: c.filC,
+    pintura: c.paintCost,
+    embalagem: c.packagingCost,
+    perda: wasteForDonut,
+    taxasShopee: totalShopee,
+  });
 }
 
 // ══════════════════════════════════════════
@@ -3550,7 +3700,10 @@ function saveSale() {
   const salePrice  = parseFloat(document.getElementById('s-price').value);
   if (!productId || !date || isNaN(qty) || isNaN(salePrice)) { alert('Preencha todos os campos.'); return; }
 
-  sales.push({ id: Date.now().toString(), productId, date, qty, salePrice });
+  // Carimba a hora atual (aproximada) para alimentar o mapa de calor por horário
+  const now = new Date();
+  const timeStr = String(now.getHours()).padStart(2,'0') + ':' + String(now.getMinutes()).padStart(2,'0');
+  sales.push({ id: Date.now().toString(), productId, date, time: timeStr, qty, salePrice });
   save('pl_sales', sales);
   closeSaleModal();
   renderSales();
@@ -5230,6 +5383,108 @@ let _snChartTrend = null, _snChartDist = null;
 
 const MONTH_NAMES = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
 
+
+// ══════════════════════════════════════════
+//  HORÁRIOS DE VENDA (mapa de calor dia × hora)
+// ══════════════════════════════════════════
+const DIAS_SEMANA = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+
+function renderHours() {
+  const metric = document.getElementById('hours-metric')?.value || 'units';
+
+  // Matriz 7 dias × 24 horas
+  const matrix = Array.from({length: 7}, () => Array(24).fill(0));
+  let withTime = 0, withoutTime = 0;
+
+  sales.forEach(s => {
+    if (!s.time) { withoutTime++; return; }
+    const p = products.find(x => x.id === s.productId);
+    if (!p) return;
+    withTime++;
+
+    const [y, mo, d] = s.date.split('-').map(Number);
+    const dow = new Date(y, mo - 1, d).getDay(); // 0=Dom..6=Sáb
+    const hour = parseInt(s.time.split(':')[0]) || 0;
+
+    let val = 1; // count
+    if (metric === 'units') val = s.qty;
+    if (metric === 'revenue') val = s.salePrice * s.qty;
+
+    matrix[dow][hour] += val;
+  });
+
+  const heatmapEl = document.getElementById('hr-heatmap');
+  const noticeEl = document.getElementById('hr-no-time-notice');
+
+  // Aviso se há vendas sem horário registrado
+  if (withoutTime > 0) {
+    noticeEl.style.display = 'block';
+    noticeEl.textContent = `⚠️ ${withoutTime} venda(s) sem horário registrado (não entram neste mapa). Vendas novas — importadas ou manuais — já registram o horário automaticamente.`;
+  } else {
+    noticeEl.style.display = 'none';
+  }
+
+  if (withTime === 0) {
+    heatmapEl.innerHTML = emptyStateHTML({
+      icon: '🕐', title: 'Ainda sem dados de horário',
+      desc: 'Importe pedidos da Shopee ou registre novas vendas para ver em quais horários você mais vende.',
+    });
+    ['hr-best-hour','hr-best-day','hr-worst-hour'].forEach(id => document.getElementById(id).textContent = '—');
+    return;
+  }
+
+  // Find max for color scaling
+  const allValues = matrix.flat();
+  const maxVal = Math.max(...allValues, 0.0001);
+
+  // Aggregate for summary cards
+  const hourTotals = Array(24).fill(0);
+  const dayTotals = Array(7).fill(0);
+  matrix.forEach((row, d) => row.forEach((v, h) => { hourTotals[h] += v; dayTotals[d] += v; }));
+
+  const bestHourIdx = hourTotals.indexOf(Math.max(...hourTotals));
+  const worstHourAmongActive = hourTotals
+    .map((v, h) => ({ v, h }))
+    .filter(x => x.v > 0)
+    .sort((a, b) => a.v - b.v)[0];
+  const bestDayIdx = dayTotals.indexOf(Math.max(...dayTotals));
+
+  document.getElementById('hr-best-hour').textContent  = String(bestHourIdx).padStart(2,'0') + 'h - ' + String((bestHourIdx+1)%24).padStart(2,'0') + 'h';
+  document.getElementById('hr-best-day').textContent   = dayFullName(bestDayIdx);
+  document.getElementById('hr-worst-hour').textContent = worstHourAmongActive
+    ? String(worstHourAmongActive.h).padStart(2,'0') + 'h - ' + String((worstHourAmongActive.h+1)%24).padStart(2,'0') + 'h'
+    : '—';
+
+  // Build the heatmap grid: header row (hours) + 7 day rows
+  const cellSize = 22;
+  let html2 = '<div style="display:grid;grid-template-columns:44px repeat(24, 1fr);gap:2px;font-size:9px">';
+
+  // Header row
+  html2 += '<div></div>';
+  for (let h = 0; h < 24; h++) {
+    html2 += `<div style="text-align:center;color:var(--text3);padding-bottom:4px">${h % 3 === 0 ? h : ''}</div>`;
+  }
+
+  // Day rows
+  for (let d = 0; d < 7; d++) {
+    html2 += `<div style="display:flex;align-items:center;font-size:10px;color:var(--text2);font-weight:500;padding-right:6px">${DIAS_SEMANA[d]}</div>`;
+    for (let h = 0; h < 24; h++) {
+      const v = matrix[d][h];
+      const intensity = v / maxVal;
+      const bg = v === 0 ? 'var(--bg3)' : `rgba(59,130,246,${0.15 + intensity * 0.85})`;
+      const label = metric === 'revenue' ? fmt(v) : Math.round(v) + (metric === 'units' ? ' un.' : ' pedido(s)');
+      html2 += `<div title="${DIAS_SEMANA[d]} ${String(h).padStart(2,'0')}h — ${v > 0 ? label : 'sem vendas'}" style="aspect-ratio:1;border-radius:3px;background:${bg};cursor:${v>0?'pointer':'default'}"></div>`;
+    }
+  }
+  html2 += '</div>';
+  heatmapEl.innerHTML = html2;
+}
+
+function dayFullName(idx) {
+  const names = ['Domingo','Segunda','Terça','Quarta','Quinta','Sexta','Sábado'];
+  return names[idx] || '';
+}
+
 function renderSeasonality() {
   const metric  = document.getElementById('season-metric')?.value || 'units';
   const yearSel = document.getElementById('season-year');
@@ -6382,8 +6637,10 @@ function importShopee(event) {
         // Pula se preço zero (pedidos sem valor)
         if (priceRaw <= 0) { skipped++; return; }
 
-        // Data: "2026-06-02 16:15" → "2026-06-02"
-        const dateStr = dateRaw.split(' ')[0] || new Date().toISOString().slice(0, 10);
+        // Data: "2026-06-02 16:15" → data "2026-06-02" + hora "16:15"
+        const dateParts = dateRaw.split(' ');
+        const dateStr = dateParts[0] || new Date().toISOString().slice(0, 10);
+        const timeStr = dateParts[1] || null; // "16:15" — usado no mapa de calor por horário
 
         // Tenta encontrar o produto no sistema (considerando a variação)
         const product = findProductByName(productName, variationName);
@@ -6408,6 +6665,7 @@ function importShopee(event) {
           shopeeOrderId: orderId,
           productId: product.id,
           date: dateStr,
+          time: timeStr,
           qty,
           salePrice: priceRaw,
           shopeeStatus: row['Status do pedido'] || '',
