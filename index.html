@@ -526,6 +526,43 @@
 
     /* ── EMPTY ── */
     .empty { padding: var(--sp-8); text-align: center; color: var(--text3); font-size: var(--fs-md); line-height: 1.6; }
+    .empty-state {
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      padding: 56px 24px; text-align: center; gap: 4px;
+    }
+    .empty-state-icon {
+      width: 72px; height: 72px; border-radius: 20px;
+      background: var(--bg3); border: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 32px; margin-bottom: 18px;
+      animation: emptyFloat 3s ease-in-out infinite;
+    }
+    @keyframes emptyFloat {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-6px); }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .empty-state-icon { animation: none; }
+    }
+    .empty-state-title {
+      font-family: 'Syne', sans-serif; font-weight: 700; font-size: var(--fs-lg);
+      color: var(--text); margin-bottom: 6px;
+    }
+    .empty-state-desc {
+      font-size: var(--fs-base); color: var(--text3); max-width: 320px; line-height: 1.6;
+      margin-bottom: 20px;
+    }
+    .empty-state-cta {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 10px 20px; border-radius: 8px; border: none;
+      background: var(--accent); color: #fff;
+      font-family: 'DM Sans', sans-serif; font-size: var(--fs-md); font-weight: 500;
+      cursor: pointer; transition: opacity 0.15s;
+    }
+    .empty-state-cta:hover { opacity: 0.85; }
+    .empty-state-cta.ghost {
+      background: transparent; border: 1px solid var(--border); color: var(--text2);
+    }
 
     .legend { display: flex; gap: 16px; margin-top: 12px; }
     .legend-item { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text2); }
@@ -1340,7 +1377,14 @@
         </thead>
         <tbody id="products-tbody"></tbody>
       </table>
-      <div class="empty" id="products-empty" style="display:none">Nenhum produto cadastrado ainda.</div>
+      <div class="empty" id="products-empty" style="display:none">
+      <div class="empty-state">
+        <div class="empty-state-icon">📦</div>
+        <div class="empty-state-title">Nenhum produto cadastrado</div>
+        <div class="empty-state-desc">Cadastre seu primeiro produto para começar a acompanhar custos, preços e margem.</div>
+        <button class="empty-state-cta" onclick="openProductModal()">+ Novo Produto</button>
+      </div>
+    </div>
     </div>
   </div>
 
@@ -1389,7 +1433,14 @@
         </thead>
         <tbody id="sales-tbody"></tbody>
       </table>
-      <div class="empty" id="sales-empty" style="display:none">Nenhuma venda registrada.</div>
+      <div class="empty" id="sales-empty" style="display:none">
+      <div class="empty-state">
+        <div class="empty-state-icon">🧾</div>
+        <div class="empty-state-title">Nenhuma venda registrada</div>
+        <div class="empty-state-desc">Registre uma venda manualmente ou importe o relatório de pedidos da Shopee.</div>
+        <button class="empty-state-cta" onclick="openSaleModal()">+ Registrar Venda</button>
+      </div>
+    </div>
     </div>
   </div>
 
@@ -1662,7 +1713,14 @@
         </thead>
         <tbody id="expenses-tbody"></tbody>
       </table>
-      <div class="empty" id="expenses-empty" style="display:none">Nenhum custo registrado ainda.</div>
+      <div class="empty" id="expenses-empty" style="display:none">
+      <div class="empty-state">
+        <div class="empty-state-icon">💸</div>
+        <div class="empty-state-title">Nenhum custo registrado</div>
+        <div class="empty-state-desc">Registre os custos operacionais da produção para ver o lucro real da loja.</div>
+        <button class="empty-state-cta" onclick="openExpenseModal()">+ Novo Custo</button>
+      </div>
+    </div>
     </div>
   </div>
 
@@ -1760,7 +1818,13 @@
           </thead>
           <tbody id="an-tbody"></tbody>
         </table>
-        <div class="empty" id="an-empty" style="display:none">Nenhuma venda registrada para este produto.</div>
+        <div class="empty" id="an-empty" style="display:none">
+      <div class="empty-state">
+        <div class="empty-state-icon">📊</div>
+        <div class="empty-state-title">Sem vendas para este produto</div>
+        <div class="empty-state-desc">Assim que houver vendas registradas, a análise completa aparece aqui.</div>
+      </div>
+    </div>
       </div>
     </div>
   </div>
@@ -1879,7 +1943,14 @@
         </thead>
         <tbody id="be-tbody"></tbody>
       </table>
-      <div class="empty" id="be-empty" style="display:none">Nenhum produto cadastrado.</div>
+      <div class="empty" id="be-empty" style="display:none">
+      <div class="empty-state">
+        <div class="empty-state-icon">⚖️</div>
+        <div class="empty-state-title">Nenhum produto cadastrado</div>
+        <div class="empty-state-desc">Cadastre produtos para calcular quantas unidades você precisa vender para cobrir os custos.</div>
+        <button class="empty-state-cta" onclick="navigate('products')">Ir para Produtos</button>
+      </div>
+    </div>
     </div>
 
     <!-- Explanation -->
@@ -1935,7 +2006,14 @@
         </thead>
         <tbody id="rank-tbody"></tbody>
       </table>
-      <div class="empty" id="rank-empty" style="display:none">Nenhuma venda registrada ainda.</div>
+      <div class="empty" id="rank-empty" style="display:none">
+      <div class="empty-state">
+        <div class="empty-state-icon">🏆</div>
+        <div class="empty-state-title">Ainda sem ranking</div>
+        <div class="empty-state-desc">O ranking dos seus produtos aparece assim que você registrar as primeiras vendas.</div>
+        <button class="empty-state-cta" onclick="openSaleModal()">+ Registrar Venda</button>
+      </div>
+    </div>
     </div>
   </div>
 
@@ -1976,7 +2054,14 @@
         </thead>
         <tbody id="ph-tbody"></tbody>
       </table>
-      <div class="empty" id="ph-empty" style="display:none">Nenhuma alteração de preço registrada ainda. Edite um produto para registrar a primeira.</div>
+      <div class="empty" id="ph-empty" style="display:none">
+      <div class="empty-state">
+        <div class="empty-state-icon">📋</div>
+        <div class="empty-state-title">Nenhuma alteração de preço</div>
+        <div class="empty-state-desc">Toda vez que você editar o preço de um produto, o histórico aparece aqui automaticamente.</div>
+        <button class="empty-state-cta ghost" onclick="navigate('products')">Ir para Produtos</button>
+      </div>
+    </div>
     </div>
   </div>
 
@@ -2716,6 +2801,23 @@ function calcProfitTotal(p, price, qty, shopeeIncome) {
 }
 
 function fmt(n) { return 'R$ ' + n.toFixed(2); }
+
+// ══════════════════════════════════════════
+//  ESTADO VAZIO ILUSTRADO (componente reutilizável)
+// ══════════════════════════════════════════
+function emptyStateHTML(opts) {
+  const { icon, title, desc, ctaText, ctaAction, ctaGhost } = opts;
+  const cta = ctaText
+    ? `<button class="empty-state-cta${ctaGhost ? ' ghost' : ''}" onclick="${ctaAction}">${ctaText}</button>`
+    : '';
+  return `<div class="empty-state">
+    <div class="empty-state-icon">${icon}</div>
+    <div class="empty-state-title">${title}</div>
+    <div class="empty-state-desc">${desc}</div>
+    ${cta}
+  </div>`;
+}
+
 
 // ══════════════════════════════════════════
 //  ANIMAÇÃO DE CONTAGEM NUMÉRICA
@@ -3867,7 +3969,11 @@ function renderScore() {
   const listEl = document.getElementById('score-list');
 
   if (scores.length === 0) {
-    listEl.innerHTML = '<div class="empty" style="padding:40px;text-align:center;color:var(--text3)">Nenhuma venda registrada para calcular o score.</div>';
+    listEl.innerHTML = emptyStateHTML({
+      icon: '⭐', title: 'Sem dados para pontuar',
+      desc: 'Registre vendas para que o score de cada produto seja calculado automaticamente.',
+      ctaText: '+ Registrar Venda', ctaAction: 'openSaleModal()'
+    });
     ['score-best','score-avg','score-worst'].forEach(id => document.getElementById(id).textContent = '—');
     return;
   }
@@ -4397,7 +4503,11 @@ function renderHome() {
   const recentEl = document.getElementById('home-recent-sales');
   const recent = [...sales].sort((a,b) => b.date.localeCompare(a.date)).slice(0,5);
   if (recent.length === 0) {
-    recentEl.innerHTML = '<div style="font-size:13px;color:var(--text3);padding:8px 0">Nenhuma venda registrada ainda.</div>';
+    recentEl.innerHTML = emptyStateHTML({
+      icon: '👋', title: 'Vamos começar!',
+      desc: 'Assim que você registrar a primeira venda, ela aparece aqui.',
+      ctaText: '+ Registrar Venda', ctaAction: 'openSaleModal()'
+    });
   } else {
     recentEl.innerHTML = recent.map(s => {
       const p = products.find(x => x.id === s.productId);
@@ -5217,7 +5327,10 @@ function renderSeasonality() {
   heatmap += `</div>`;
 
   if (productIds.length === 0) {
-    heatmap = `<div class="empty" style="padding:32px;text-align:center;color:var(--text3)">Nenhuma venda encontrada para o período.</div>`;
+    heatmap = emptyStateHTML({
+      icon: '🌡️', title: 'Sem vendas no período',
+      desc: 'Escolha outro período ou registre vendas para ver o mapa de sazonalidade.',
+    });
   }
   document.getElementById('sn-heatmap').innerHTML = heatmap;
 
