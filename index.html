@@ -105,6 +105,21 @@
       --yellow:  #d97706;
       --blue:    #2563eb;
     }
+
+    /* ══════════════ PALETAS DE COR (independente de claro/escuro) ══════════════ */
+    /* Azul é o padrão, já definido acima em :root / html.light — sem regra extra necessária */
+
+    html[data-palette="green"]              { --accent: #22c55e; --accent2: #4ade80; --blue: #4ade80; }
+    html.light[data-palette="green"]        { --accent: #16a34a; --accent2: #22c55e; --blue: #22c55e; }
+
+    html[data-palette="purple"]             { --accent: #8b5cf6; --accent2: #a78bfa; --blue: #a78bfa; }
+    html.light[data-palette="purple"]       { --accent: #7c3aed; --accent2: #8b5cf6; --blue: #8b5cf6; }
+
+    html[data-palette="amber"]              { --accent: #f59e0b; --accent2: #fbbf24; --blue: #fbbf24; }
+    html.light[data-palette="amber"]        { --accent: #d97706; --accent2: #f59e0b; --blue: #f59e0b; }
+
+    html[data-palette="pink"]               { --accent: #ec4899; --accent2: #f472b6; --blue: #f472b6; }
+    html.light[data-palette="pink"]         { --accent: #db2777; --accent2: #ec4899; --blue: #ec4899; }
     html.light body { background: var(--bg); }
     html.light ::-webkit-scrollbar-track { background: var(--bg3); }
     html.light ::-webkit-scrollbar-thumb { background: var(--border); }
@@ -494,6 +509,53 @@
     .settings-card { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--r); padding: 24px; margin-bottom: 20px; }
     .settings-title { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 16px; margin-bottom: 16px; }
     .preset-row { display: grid; grid-template-columns: 1fr 1fr auto; gap: 12px; align-items: center; margin-bottom: 10px; }
+    .home-banner {
+      position: relative; width: 100%; height: 150px;
+      border-radius: 16px; overflow: hidden; margin-bottom: 22px;
+      background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 45%, #60a5fa 100%);
+      background-size: cover; background-position: center;
+      display: flex; align-items: flex-end;
+    }
+    .home-banner-overlay {
+      position: absolute; inset: 0;
+      background: linear-gradient(180deg, rgba(9,9,15,0.05) 0%, rgba(9,9,15,0.65) 100%);
+    }
+    .home-banner-content {
+      position: relative; z-index: 1; padding: 18px 22px;
+    }
+    .home-banner-title {
+      font-family: 'Syne', sans-serif; font-weight: 800; font-size: 22px;
+      color: #fff; letter-spacing: -0.3px;
+      text-shadow: 0 2px 12px rgba(0,0,0,0.35);
+    }
+    .home-banner-sub {
+      font-size: 12px; color: rgba(255,255,255,0.85); margin-top: 3px;
+      text-shadow: 0 1px 8px rgba(0,0,0,0.3);
+    }
+    .home-banner-edit-btn {
+      position: absolute; top: 12px; right: 12px; z-index: 2;
+      width: 34px; height: 34px; border-radius: 10px;
+      background: rgba(9,9,15,0.45); backdrop-filter: blur(6px);
+      border: 0.5px solid rgba(255,255,255,0.2);
+      color: #fff; font-size: 15px; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      transition: background 0.15s;
+    }
+    .home-banner-edit-btn:hover { background: rgba(9,9,15,0.65); }
+    .home-banner-remove-btn {
+      position: absolute; top: 12px; right: 54px; z-index: 2;
+      width: 34px; height: 34px; border-radius: 10px;
+      background: rgba(9,9,15,0.45); backdrop-filter: blur(6px);
+      border: 0.5px solid rgba(255,255,255,0.2);
+      color: #fff; font-size: 16px; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      transition: background 0.15s;
+    }
+    .home-banner-remove-btn:hover { background: rgba(239,68,68,0.6); }
+    @media (max-width: 768px) {
+      .home-banner { height: 110px; }
+      .home-banner-title { font-size: 18px; }
+    }
     .variation-row { display: grid; grid-template-columns: 1.4fr 0.9fr 0.9fr auto; gap: 8px; align-items: center; margin-bottom: 8px; }
     .variation-row input { width: 100%; }
     .variation-grams-hint { grid-column: 1/-1; font-size: 10px; color: var(--text3); margin-top: -4px; margin-bottom: 2px; }
@@ -863,11 +925,16 @@
 </head>
 <body>
 <script>
-  // Aplica o tema salvo IMEDIATAMENTE, antes do splash renderizar, evitando flash de cor errada
+  // Aplica o tema e a paleta salvos IMEDIATAMENTE, antes de qualquer render, evitando flash de cor errada
   try {
     const savedTheme = localStorage.getItem('pl_theme');
     if (savedTheme === '"light"' || savedTheme === 'light') {
       document.documentElement.classList.add('light');
+    }
+    const savedPalette = localStorage.getItem('pl_palette');
+    const paletteVal = savedPalette ? savedPalette.replace(/"/g, '') : 'blue';
+    if (paletteVal && paletteVal !== 'blue') {
+      document.documentElement.setAttribute('data-palette', paletteVal);
     }
   } catch(e) {}
 </script>
@@ -1133,6 +1200,19 @@
   <!-- ══════════════ DASHBOARD ══════════════ -->
   <!-- ══════════════ HOME ══════════════ -->
   <div class="page active" id="page-home">
+
+    <!-- Capa personalizada -->
+    <div class="home-banner" id="home-banner">
+      <div class="home-banner-overlay"></div>
+      <div class="home-banner-content">
+        <div class="home-banner-title">Print Lab</div>
+        <div class="home-banner-sub">Produtos personalizados em impressão 3D</div>
+      </div>
+      <button class="home-banner-edit-btn" onclick="document.getElementById('banner-upload-input').click()" title="Alterar capa">📷</button>
+      <button class="home-banner-remove-btn" id="home-banner-remove-btn" onclick="removeHomeBanner()" title="Remover capa" style="display:none">×</button>
+      <input type="file" id="banner-upload-input" accept="image/*" style="display:none" onchange="handleBannerUpload(event)" />
+    </div>
+
     <div style="padding-bottom:8px;margin-bottom:20px;border-bottom:0.5px solid var(--border);display:flex;justify-content:space-between;align-items:flex-end">
       <div>
         <div id="home-greeting" style="font-family:'Syne',sans-serif;font-size:22px;font-weight:700;letter-spacing:-0.3px"></div>
@@ -1461,6 +1541,14 @@
         <div class="page-title">Configurações</div>
         <div class="page-sub">Presets de filamento e parâmetros gerais</div>
       </div>
+    </div>
+
+    <div class="settings-card">
+      <div class="settings-title">🎨 Aparência</div>
+      <div style="font-size:13px;color:var(--text2);margin-bottom:16px;line-height:1.6">
+        Escolha a cor de destaque do sistema. O tema claro/escuro continua no botão de baixo da barra lateral.
+      </div>
+      <div id="palette-swatches" style="display:flex;gap:12px;flex-wrap:wrap"></div>
     </div>
 
     <div class="settings-card">
@@ -3795,6 +3883,7 @@ function deleteSelected() {
 //  SETTINGS
 // ══════════════════════════════════════════
 function renderSettings() {
+  renderPaletteSwatches();
   renderPackagingList();
   renderRecurringList();
   // Populate goal fields
@@ -3958,9 +4047,61 @@ function toggleTheme() {
   if (activePage?.id === 'page-dashboard') renderDashboard();
 }
 
+// ══════════════════════════════════════════
+//  PALETAS DE COR
+// ══════════════════════════════════════════
+const COLOR_PALETTES = [
+  { id: 'blue',   name: 'Azul (padrão)', dot: '#3b82f6' },
+  { id: 'green',  name: 'Verde',         dot: '#22c55e' },
+  { id: 'purple', name: 'Roxo',          dot: '#8b5cf6' },
+  { id: 'amber',  name: 'Âmbar',         dot: '#f59e0b' },
+  { id: 'pink',   name: 'Rosa',          dot: '#ec4899' },
+];
+
+function applyPalette(paletteId) {
+  if (paletteId === 'blue') {
+    document.documentElement.removeAttribute('data-palette');
+  } else {
+    document.documentElement.setAttribute('data-palette', paletteId);
+  }
+  renderPaletteSwatches();
+}
+
+function selectPalette(paletteId) {
+  save('pl_palette', paletteId);
+  applyPalette(paletteId);
+  // Re-render dashboard charts, pois usam Chart.defaults.color/borderColor mas não a cor de destaque —
+  // ainda assim, elementos como o termômetro e gráficos usam var(--accent) via canvas em alguns casos.
+  const activePage = document.querySelector('.page.active');
+  if (activePage?.id === 'page-dashboard') renderDashboard();
+  if (activePage?.id === 'page-home')      renderHome();
+}
+
+function renderPaletteSwatches() {
+  const container = document.getElementById('palette-swatches');
+  if (!container) return;
+  const current = document.documentElement.getAttribute('data-palette') || 'blue';
+  container.innerHTML = COLOR_PALETTES.map(p => `
+    <button onclick="selectPalette('${p.id}')" title="${p.name}"
+      style="display:flex;flex-direction:column;align-items:center;gap:6px;background:none;border:none;cursor:pointer;padding:4px">
+      <div style="width:38px;height:38px;border-radius:50%;background:${p.dot};
+        border:2.5px solid ${current === p.id ? 'var(--text)' : 'transparent'};
+        box-shadow:${current === p.id ? '0 0 0 2px var(--bg2), 0 0 0 3px ' + p.dot : 'none'};
+        transition:all 0.15s;display:flex;align-items:center;justify-content:center;">
+        ${current === p.id ? '<span style="color:#fff;font-size:14px;text-shadow:0 1px 2px rgba(0,0,0,0.3)">✓</span>' : ''}
+      </div>
+      <span style="font-size:11px;color:${current === p.id ? 'var(--text)' : 'var(--text3)'}">${p.name}</span>
+    </button>
+  `).join('');
+}
+
 // Init theme on load
 const savedTheme = loadLocal('pl_theme', 'dark');
 applyTheme(savedTheme);
+
+// Init color palette on load
+const savedPalette = loadLocal('pl_palette', 'blue');
+applyPalette(savedPalette);
 
 
 // ══════════════════════════════════════════
@@ -4576,6 +4717,7 @@ function renderThermometer(curM, monthRev, monthProfit, monthUnits) {
 }
 
 function renderHome() {
+  applyHomeBanner();
   const now   = new Date();
   const today = now.toISOString().slice(0,10);
   const curM  = today.slice(0,7);
@@ -5146,6 +5288,64 @@ function showDayDetail(dateStr, data, productColorMap) {
 //  FOTO DO PRODUTO
 // ══════════════════════════════════════════
 window._currentPhoto = null;
+
+
+// ══════════════════════════════════════════
+//  CAPA PERSONALIZADA DA HOME
+// ══════════════════════════════════════════
+function applyHomeBanner() {
+  const banner = document.getElementById('home-banner');
+  const removeBtn = document.getElementById('home-banner-remove-btn');
+  if (!banner) return;
+  const saved = loadLocal('pl_home_banner', null);
+  if (saved) {
+    banner.style.backgroundImage = `url(${saved})`;
+    if (removeBtn) removeBtn.style.display = 'flex';
+  } else {
+    banner.style.backgroundImage = '';
+    if (removeBtn) removeBtn.style.display = 'none';
+  }
+}
+
+function handleBannerUpload(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  if (file.size > 5 * 1024 * 1024) {
+    alert('Foto muito grande. Máximo 5MB.');
+    return;
+  }
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const img = new window.Image();
+    img.onload = () => {
+      // Apenas reduz se a imagem exceder o limite (nunca amplia).
+      // Não força recorte — o CSS "background-size: cover" já enquadra
+      // a imagem corretamente na área do banner em qualquer tela.
+      const maxDim = 1600;
+      let w = img.width, h = img.height;
+      if (w > maxDim || h > maxDim) {
+        if (w > h) { h = Math.round(h * maxDim / w); w = maxDim; }
+        else       { w = Math.round(w * maxDim / h); h = maxDim; }
+      }
+      const canvas = document.createElement('canvas');
+      canvas.width = w; canvas.height = h;
+      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+      save('pl_home_banner', dataUrl);
+      applyHomeBanner();
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+  event.target.value = '';
+}
+
+function removeHomeBanner() {
+  if (!confirm('Remover a capa personalizada e voltar ao gradiente padrão?')) return;
+  save('pl_home_banner', null);
+  applyHomeBanner();
+}
 
 function handlePhotoUpload(event) {
   const file = event.target.files[0];
