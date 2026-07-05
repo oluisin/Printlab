@@ -494,6 +494,9 @@
     .settings-card { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--r); padding: 24px; margin-bottom: 20px; }
     .settings-title { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 16px; margin-bottom: 16px; }
     .preset-row { display: grid; grid-template-columns: 1fr 1fr auto; gap: 12px; align-items: center; margin-bottom: 10px; }
+    .variation-row { display: grid; grid-template-columns: 1.4fr 0.9fr 0.9fr auto; gap: 8px; align-items: center; margin-bottom: 8px; }
+    .variation-row input { width: 100%; }
+    .variation-grams-hint { grid-column: 1/-1; font-size: 10px; color: var(--text3); margin-top: -4px; margin-bottom: 2px; }
     .info-box { background: rgba(96,165,250,0.07); border: 1px solid rgba(96,165,250,0.2); border-radius: var(--r); padding: 18px 20px; }
     .rank-tab { padding: 7px 16px; border-radius: 7px; border: none; background: transparent; color: var(--text2); font-size: 13px; cursor: pointer; font-family: 'DM Sans',sans-serif; transition: all 0.15s; }
     .score-card { display: flex; align-items: center; gap: 16px; background: var(--bg2); border: 0.5px solid var(--border); border-radius: 14px; padding: 16px 18px; margin-bottom: 10px; cursor: pointer; transition: border-color 0.15s; }
@@ -2786,7 +2789,12 @@ function getProductFees(p) {
 }
 
 // calcFilamentCost: calcula custo total de filamento — suporta parts[] ou campo simples
-function calcFilamentCost(p) {
+function calcFilamentCost(p, overrideGrams) {
+  // Se a variação tem peso próprio (override), usa o preço médio por grama
+  // das partes cadastradas do produto, aplicado ao novo peso total.
+  if (overrideGrams != null && overrideGrams > 0 && p.parts && p.parts.length > 0) {
+    return calcVariationFilamentCost(p.parts, overrideGrams);
+  }
   if (p.parts && p.parts.length > 0) {
     return p.parts.reduce((sum, part) => {
       const fil = getFilament(part.filamentType);
@@ -2798,6 +2806,31 @@ function calcFilamentCost(p) {
   return (p.filamentGrams / 1000) * fil.pricePerKg;
 }
 
+// calcVariationFilamentCost: dado um array de partes (com seus tipos de filamento)
+// e um peso total alternativo (override), calcula o custo proporcional usando o
+// preço médio por grama da composição original. Assim, uma variação "Colorido"
+// que gasta mais filamento (ex: purga entre trocas de cor) tem seu próprio custo real.
+function getVariationGrams(p, variationName) {
+  if (!p || !variationName || !p.variations || p.variations.length === 0) return null;
+  const nameLower = String(variationName).toLowerCase().trim();
+  const match = p.variations.find(v =>
+    v.name && (nameLower.includes(v.name.toLowerCase().trim()) || v.name.toLowerCase().trim().includes(nameLower))
+  );
+  return (match && match.grams != null && match.grams > 0) ? match.grams : null;
+}
+
+function calcVariationFilamentCost(parts, overrideGrams) {
+  if (!parts || parts.length === 0 || !overrideGrams || overrideGrams <= 0) return 0;
+  const baseGrams = parts.reduce((s, part) => s + (part.grams || 0) * (part.qty || 1), 0);
+  const baseCost  = parts.reduce((sum, part) => {
+    const fil = getFilament(part.filamentType);
+    return sum + (part.grams / 1000) * fil.pricePerKg * (part.qty || 1);
+  }, 0);
+  if (baseGrams <= 0) return 0;
+  const avgPricePerGram = baseCost / baseGrams;
+  return avgPricePerGram * overrideGrams;
+}
+
 // getWasteMultiplier: fator que infla o custo de produção pela taxa de perda
 // Ex: 10% de perda → multiplicador 1/(1-0.10) = 1.111 (cada peça boa "paga" pela falhada)
 function getWasteMultiplier() {
@@ -2806,10 +2839,10 @@ function getWasteMultiplier() {
 }
 
 // calcCost: custo por unidade (taxas fixas divididas pela qty do pedido)
-function calcCost(p, price, qty) {
+function calcCost(p, price, qty, overrideGrams) {
   qty = qty || 1;
   const wm          = getWasteMultiplier();
-  const filC        = calcFilamentCost(p);
+  const filC        = calcFilamentCost(p, overrideGrams);
   const fees        = getProductFees(p);
   const baseProd    = filC + p.paintCost + p.packagingCost;
   const wasteCost   = baseProd * (wm - 1); // custo extra por causa das perdas
@@ -2901,9 +2934,9 @@ function renderCostDonut(parts) {
   }).join('');
 }
 
-function calcProfit(p, price, qty) {
+function calcProfit(p, price, qty, overrideGrams) {
   qty = qty || 1;
-  const c      = calcCost(p, price, qty);
+  const c      = calcCost(p, price, qty, overrideGrams);
   const profit = price - c.total;
   const margin = price > 0 ? (profit / price * 100) : 0;
   return { ...c, profit, margin };
@@ -2911,10 +2944,10 @@ function calcProfit(p, price, qty) {
 
 // calcProfitTotal: lucro total de um pedido com qty unidades
 // shopeeIncome: valor real pago pela Shopee (do XLSX). Se fornecido, usa-o diretamente.
-function calcProfitTotal(p, price, qty, shopeeIncome) {
+function calcProfitTotal(p, price, qty, shopeeIncome, overrideGrams) {
   qty = qty || 1;
   const wm           = getWasteMultiplier();
-  const filC         = calcFilamentCost(p) * qty;
+  const filC         = calcFilamentCost(p, overrideGrams) * qty;
   const prodCostBase = filC + (p.paintCost + p.packagingCost) * qty;
   const prodCost     = prodCostBase * wm;
   const wasteCost    = prodCostBase * (wm - 1);
@@ -3105,7 +3138,7 @@ function renderDashboard() {
   sales.forEach(s => {
     const p = products.find(x => x.id === s.productId); if (!p) return;
     const r = s.salePrice * s.qty;
-    const pr = calcProfitTotal(p, s.salePrice, s.qty, s._shopeeTotal).totalProfit;
+    const pr = calcProfitTotal(p, s.salePrice, s.qty, s._shopeeTotal, getVariationGrams(p, s.variationName)).totalProfit;
     const mk = s.date.slice(0, 7);
     if (!byMonth[mk]) byMonth[mk] = { label: fmtMonth(s.date), rev: 0, profit: 0, units: 0, key: mk };
     byMonth[mk].rev    += r;
@@ -3117,7 +3150,7 @@ function renderDashboard() {
   filteredSales.forEach(s => {
     const p = products.find(x => x.id === s.productId); if (!p) return;
     const r = s.salePrice * s.qty;
-    const pr = calcProfitTotal(p, s.salePrice, s.qty, s._shopeeTotal).totalProfit;
+    const pr = calcProfitTotal(p, s.salePrice, s.qty, s._shopeeTotal, getVariationGrams(p, s.variationName)).totalProfit;
     rev += r; profit += pr; units += s.qty;
     if (!byProduct[s.productId]) byProduct[s.productId] = { name: p.name, rev: 0 };
     byProduct[s.productId].rev += r;
@@ -3166,7 +3199,7 @@ function renderDashboard() {
   sales.filter(s => s.date.startsWith(curMonthKey)).forEach(s => {
     const p = products.find(x => x.id === s.productId); if (!p) return;
     goalRev    += s.salePrice * s.qty;
-    goalProfit += calcProfitTotal(p, s.salePrice, s.qty, s._shopeeTotal).totalProfit;
+    goalProfit += calcProfitTotal(p, s.salePrice, s.qty, s._shopeeTotal, getVariationGrams(p, s.variationName)).totalProfit;
     goalUnits  += s.qty;
   });
   renderGoalCard(goalRev, goalProfit, goalUnits);
@@ -3200,7 +3233,7 @@ function renderDashboard() {
     arr.forEach(s => {
       const prod = products.find(x => x.id === s.productId); if (!prod) return;
       r += s.salePrice * s.qty;
-      p += calcProfitTotal(prod, s.salePrice, s.qty).totalProfit;
+      p += calcProfitTotal(prod, s.salePrice, s.qty, null, getVariationGrams(prod, s.variationName)).totalProfit;
       u += s.qty;
     });
     return {r,p,u};
@@ -3590,7 +3623,7 @@ function renderSales() {
     const p = products.find(x => x.id === s.productId);
     if (!p) return;
     rev    += s.salePrice * s.qty;
-    profit += calcProfitTotal(p, s.salePrice, s.qty, s._shopeeTotal).totalProfit;
+    profit += calcProfitTotal(p, s.salePrice, s.qty, s._shopeeTotal, getVariationGrams(p, s.variationName)).totalProfit;
     units  += s.qty;
     if (s._shopeeTotal && s._shopeeTotal > 0) {
       shopeeIncomeSales += s._shopeeTotal;
@@ -3614,7 +3647,7 @@ function renderSales() {
   sorted.forEach(s => {
     const p = products.find(x => x.id === s.productId);
     if (!p) return;
-    const { totalProfit: totalP } = calcProfitTotal(p, s.salePrice, s.qty, s._shopeeTotal);
+    const { totalProfit: totalP } = calcProfitTotal(p, s.salePrice, s.qty, s._shopeeTotal, getVariationGrams(p, s.variationName));
     const [y,mo,d] = s.date.split('-');
     const tr = document.createElement('tr');
     // Renda Shopee por pedido
@@ -4046,7 +4079,7 @@ function computeProductScores(period) {
     if (!p) return;
     if (!byProduct[s.productId]) byProduct[s.productId] = { p, revenue:0, profit:0, units:0, margins:[], monthly:{} };
     const rev  = s.salePrice * s.qty;
-    const prof = calcProfitTotal(p, s.salePrice, s.qty, s._shopeeTotal).totalProfit;
+    const prof = calcProfitTotal(p, s.salePrice, s.qty, s._shopeeTotal, getVariationGrams(p, s.variationName)).totalProfit;
     byProduct[s.productId].revenue += rev;
     byProduct[s.productId].profit  += prof;
     byProduct[s.productId].units   += s.qty;
@@ -4207,7 +4240,7 @@ function getRankingData() {
     if (!p) return;
     if (!byProduct[s.productId]) byProduct[s.productId] = { p, revenue:0, profit:0, units:0, margins:[] };
     const rev  = s.salePrice * s.qty;
-    const prof = calcProfitTotal(p, s.salePrice, s.qty, s._shopeeTotal).totalProfit;
+    const prof = calcProfitTotal(p, s.salePrice, s.qty, s._shopeeTotal, getVariationGrams(p, s.variationName)).totalProfit;
     const marg = rev > 0 ? prof / rev * 100 : 0;
     byProduct[s.productId].revenue += rev;
     byProduct[s.productId].profit  += prof;
@@ -4452,7 +4485,7 @@ function renderThermometer(curM, monthRev, monthProfit, monthUnits) {
   sales.filter(s => s.date.startsWith(prevM)).forEach(s => {
     const p = products.find(x => x.id === s.productId); if (!p) return;
     prevRev    += s.salePrice * s.qty;
-    prevProfit += calcProfitTotal(p, s.salePrice, s.qty, s._shopeeTotal).totalProfit;
+    prevProfit += calcProfitTotal(p, s.salePrice, s.qty, s._shopeeTotal, getVariationGrams(p, s.variationName)).totalProfit;
     prevUnits  += s.qty;
   });
 
@@ -4561,7 +4594,7 @@ function renderHome() {
     const p = products.find(x => x.id === s.productId); if (!p) return;
     todaySales++;
     todayRev    += s.salePrice * s.qty;
-    todayProfit += calcProfitTotal(p, s.salePrice, s.qty, s._shopeeTotal).totalProfit;
+    todayProfit += calcProfitTotal(p, s.salePrice, s.qty, s._shopeeTotal, getVariationGrams(p, s.variationName)).totalProfit;
     todayUnits  += s.qty;
   });
 
@@ -4575,7 +4608,7 @@ function renderHome() {
   sales.filter(s => s.date.startsWith(curM)).forEach(s => {
     const p = products.find(x => x.id === s.productId); if (!p) return;
     monthRev    += s.salePrice * s.qty;
-    monthProfit += calcProfitTotal(p, s.salePrice, s.qty, s._shopeeTotal).totalProfit;
+    monthProfit += calcProfitTotal(p, s.salePrice, s.qty, s._shopeeTotal, getVariationGrams(p, s.variationName)).totalProfit;
     monthUnits  += s.qty;
   });
 
@@ -4666,7 +4699,7 @@ function renderHome() {
       const p = products.find(x => x.id === s.productId);
       if (!p) return '';
       const [y,mo,d] = s.date.split('-');
-      const { totalProfit } = calcProfitTotal(p, s.salePrice, s.qty, s._shopeeTotal);
+      const { totalProfit } = calcProfitTotal(p, s.salePrice, s.qty, s._shopeeTotal, getVariationGrams(p, s.variationName));
       const isToday = s.date === today;
       return `<div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:0.5px solid var(--border)">
         <div style="font-size:11px;color:${isToday?'var(--accent2)':'var(--text3)'};min-width:48px;font-weight:${isToday?600:400}">${isToday?'Hoje':d+'/'+mo}</div>
@@ -4696,7 +4729,7 @@ function renderProjection() {
     const mk = s.date.slice(0,7);
     if (!byMonth[mk]) byMonth[mk] = { rev: 0, profit: 0, units: 0 };
     byMonth[mk].rev    += s.salePrice * s.qty;
-    byMonth[mk].profit += calcProfitTotal(p, s.salePrice, s.qty, s._shopeeTotal).totalProfit;
+    byMonth[mk].profit += calcProfitTotal(p, s.salePrice, s.qty, s._shopeeTotal, getVariationGrams(p, s.variationName)).totalProfit;
     byMonth[mk].units  += s.qty;
   });
 
@@ -4824,7 +4857,7 @@ function renderProjection() {
     const mk = s.date.slice(0,7);
     if (!byProduct[s.productId].months[mk]) byProduct[s.productId].months[mk] = { rev: 0, profit: 0 };
     byProduct[s.productId].months[mk].rev    += s.salePrice * s.qty;
-    byProduct[s.productId].months[mk].profit += calcProfitTotal(p, s.salePrice, s.qty, s._shopeeTotal).totalProfit;
+    byProduct[s.productId].months[mk].profit += calcProfitTotal(p, s.salePrice, s.qty, s._shopeeTotal, getVariationGrams(p, s.variationName)).totalProfit;
   });
 
   const tbody = document.getElementById('proj-tbody');
@@ -4992,7 +5025,7 @@ function renderCalendar() {
     }
     if (!dailyData[s.date]) dailyData[s.date] = { rev: 0, profit: 0, units: 0, sales: [], productIds: new Set() };
     const rev = s.salePrice * s.qty;
-    const profit = calcProfitTotal(p, s.salePrice, s.qty, s._shopeeTotal).totalProfit;
+    const profit = calcProfitTotal(p, s.salePrice, s.qty, s._shopeeTotal, getVariationGrams(p, s.variationName)).totalProfit;
     dailyData[s.date].rev    += rev;
     dailyData[s.date].profit += profit;
     dailyData[s.date].units  += s.qty;
@@ -5193,21 +5226,32 @@ function renderVariationsList() {
   currentVariations.forEach((v, i) => {
     const row = document.createElement('div');
     row.className = 'variation-row';
+    const hasGramsOverride = v.grams != null && v.grams > 0;
+    let hintText = '';
+    if (hasGramsOverride) {
+      const extraCost = calcVariationFilamentCost(currentParts, v.grams);
+      hintText = `⚖️ ${v.grams}g → custo de filamento: ${fmt(extraCost)} para esta variação`;
+    }
     row.innerHTML = `
       <input type="text" value="${v.name}" placeholder="Ex: Preto"
         onchange="updateVariation(${i},'name',this.value)"
         style="background:var(--bg3);border:1px solid var(--border);border-radius:6px;color:var(--text)" />
-      <input type="number" step="0.01" value="${v.price||''}" placeholder="0,00"
+      <input type="number" step="0.01" value="${v.price||''}" placeholder="Preço"
         onchange="updateVariation(${i},'price',parseFloat(this.value)||0)"
         style="background:var(--bg3);border:1px solid var(--border);border-radius:6px;color:var(--text);text-align:right" />
-      <button class="btn-remove-part" onclick="removeVariation(${i})">×</button>`;
+      <input type="number" step="1" value="${v.grams||''}" placeholder="Auto (g)"
+        title="Peso total de filamento desta variação em gramas. Deixe vazio para usar o peso padrão do produto."
+        onchange="updateVariation(${i},'grams',this.value?parseFloat(this.value):null)"
+        style="background:var(--bg3);border:1px solid var(--border);border-radius:6px;color:var(--text);text-align:right" />
+      <button class="btn-remove-part" onclick="removeVariation(${i})">×</button>
+      ${hintText ? `<div class="variation-grams-hint">${hintText}</div>` : ''}`;
     list.appendChild(row);
   });
 }
 
 function addVariation() {
   const basePrice = parseFloat(document.getElementById('p-price').value) || 0;
-  currentVariations.push({ name: '', price: basePrice });
+  currentVariations.push({ name: '', price: basePrice, grams: null });
   renderVariationsList();
 }
 
@@ -5516,7 +5560,7 @@ function renderSeasonality() {
     let val = 0;
     if (metric === 'units')   val = s.qty;
     if (metric === 'revenue') val = s.salePrice * s.qty;
-    if (metric === 'profit')  val = calcProfitTotal(p, s.salePrice, s.qty, s._shopeeTotal).totalProfit;
+    if (metric === 'profit')  val = calcProfitTotal(p, s.salePrice, s.qty, s._shopeeTotal, getVariationGrams(p, s.variationName)).totalProfit;
     if (matrix[s.productId][m] !== undefined) matrix[s.productId][m] += val;
   });
 
@@ -5847,7 +5891,7 @@ function renderAnalysis() {
   prodSales.forEach(s => {
     units   += s.qty;
     revenue += s.salePrice * s.qty;
-    profit  += calcProfitTotal(p, s.salePrice, s.qty, s._shopeeTotal).totalProfit;
+    profit  += calcProfitTotal(p, s.salePrice, s.qty, s._shopeeTotal, getVariationGrams(p, s.variationName)).totalProfit;
     shopeeIncome += s._shopeeTotal > 0 ? s._shopeeTotal : Math.max(0, s.salePrice * s.qty - s.salePrice * 0.20 * s.qty - 4.49);
   });
   const margin = revenue > 0 ? (profit/revenue*100) : 0;
@@ -5868,7 +5912,7 @@ function renderAnalysis() {
       return sum + (rev - s._shopeeTotal) / rev;
     }, 0) / importedSales.length;
     const realMarginAvg = importedSales.reduce((sum,s) => {
-      const pr = calcProfitTotal(p, s.salePrice, s.qty, s._shopeeTotal).totalProfit;
+      const pr = calcProfitTotal(p, s.salePrice, s.qty, s._shopeeTotal, getVariationGrams(p, s.variationName)).totalProfit;
       return sum + pr / (s.salePrice * s.qty);
     }, 0) / importedSales.length;
 
@@ -5887,7 +5931,7 @@ function renderAnalysis() {
     const mk = s.date.slice(0,7);
     if (!byMonth[mk]) byMonth[mk] = { label: fmtMonth(s.date), rev: 0, profit: 0, key: mk };
     byMonth[mk].rev    += s.salePrice * s.qty;
-    byMonth[mk].profit += calcProfitTotal(p, s.salePrice, s.qty, s._shopeeTotal).totalProfit;
+    byMonth[mk].profit += calcProfitTotal(p, s.salePrice, s.qty, s._shopeeTotal, getVariationGrams(p, s.variationName)).totalProfit;
   });
   const months = Object.values(byMonth).sort((a,b) => a.key < b.key ? -1 : 1);
 
@@ -5977,7 +6021,7 @@ function renderAnalysis() {
 
   prodSales.forEach(s => {
     const [y,mo,d] = s.date.split('-');
-    const { totalProfit } = calcProfitTotal(p, s.salePrice, s.qty, s._shopeeTotal);
+    const { totalProfit } = calcProfitTotal(p, s.salePrice, s.qty, s._shopeeTotal, getVariationGrams(p, s.variationName));
     const rev = s.salePrice * s.qty;
     const marg = rev > 0 ? (totalProfit/rev*100).toFixed(1) : 0;
     const shopeeTag = s._shopeeTotal > 0 ? '' : ' <span style="font-size:9px;opacity:0.5">~est.</span>';
@@ -6321,7 +6365,7 @@ function renderExpenses() {
     if (filterMonth && !s.date.startsWith(filterMonth)) return;
     const p = products.find(x => x.id === s.productId); if (!p) return;
     revenue += s.salePrice * s.qty;
-    const r = calcProfitTotal(p, s.salePrice, s.qty, s._shopeeTotal);
+    const r = calcProfitTotal(p, s.salePrice, s.qty, s._shopeeTotal, getVariationGrams(p, s.variationName));
     grossProfit += r.totalProfit;
     totalWaste  += r.wasteCost || 0;
   });
