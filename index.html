@@ -3063,6 +3063,21 @@ function calcProfitTotal(p, price, qty, shopeeIncome, overrideGrams) {
 function fmt(n) { return 'R$ ' + n.toFixed(2); }
 
 // ══════════════════════════════════════════
+//  DATA LOCAL (correção de fuso horário)
+// ══════════════════════════════════════════
+// NUNCA usar new Date().toISOString().slice(0,10) para "hoje" — isso usa UTC
+// e quebra a partir das 21h no horário de Brasília (UTC-3), fazendo a data
+// "virar o dia" 3 horas antes da meia-noite local.
+function localDateStr(date) {
+  const d = date || new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+
+// ══════════════════════════════════════════
 //  ESTADO VAZIO ILUSTRADO (componente reutilizável)
 // ══════════════════════════════════════════
 function emptyStateHTML(opts) {
@@ -3557,7 +3572,7 @@ function saveProduct() {
         id:          Date.now().toString(),
         productId:   editingId,
         productName: data.name,
-        date:        new Date().toISOString().slice(0,10),
+        date:        localDateStr(),
         oldPrice:    oldProduct.price,
         newPrice:    data.price,
         oldProfit:   +oldProfit.toFixed(2),
@@ -3575,7 +3590,7 @@ function saveProduct() {
       id:          newId + '_init',
       productId:   newId,
       productName: data.name,
-      date:        new Date().toISOString().slice(0,10),
+      date:        localDateStr(),
       oldPrice:    null,
       newPrice:    data.price,
       oldProfit:   null,
@@ -3774,7 +3789,7 @@ function renderSales() {
 function openSaleModal() {
   const sel = document.getElementById('s-product');
   sel.innerHTML = products.map(p => `<option value="${p.id}">${p.name}</option>`).join('');
-  document.getElementById('s-date').value  = new Date().toISOString().slice(0,10);
+  document.getElementById('s-date').value  = localDateStr();
   document.getElementById('s-qty').value   = 1;
   if (products.length > 0) document.getElementById('s-price').value = products[0].price;
   updateSaleSim();
@@ -4719,7 +4734,7 @@ function renderThermometer(curM, monthRev, monthProfit, monthUnits) {
 function renderHome() {
   applyHomeBanner();
   const now   = new Date();
-  const today = now.toISOString().slice(0,10);
+  const today = localDateStr(now);
   const curM  = today.slice(0,7);
   const hour  = now.getHours();
   const days  = ['Domingo','Segunda','Terça','Quarta','Quinta','Sexta','Sábado'];
@@ -5137,7 +5152,7 @@ function calGoToMonth(val) {
 
 function renderCalendar() {
   const today = new Date();
-  const todayStr = today.toISOString().slice(0,10);
+  const todayStr = localDateStr(today);
 
   // Populate month selector
   const sel = document.getElementById('cal-month-select');
@@ -6024,7 +6039,7 @@ function qsConfirm() {
   if (!_qs.productId || !_qs.price || !_qs.qty) return;
   addSale({
     productId: _qs.productId,
-    date:      new Date().toISOString().slice(0,10),
+    date:      localDateStr(),
     qty:       _qs.qty,
     salePrice: _qs.price,
   });
@@ -6400,7 +6415,7 @@ function exportData() {
   const url  = URL.createObjectURL(blob);
   const a    = document.createElement('a');
   a.href     = url;
-  a.download = 'printlab-backup-' + new Date().toISOString().slice(0,10) + '.json';
+  a.download = 'printlab-backup-' + localDateStr() + '.json';
   a.click();
   URL.revokeObjectURL(url);
 }
@@ -6636,7 +6651,7 @@ function openExpenseModal(id) {
   document.getElementById('e-cat').value   = 'Filamento';
   document.getElementById('e-type').value  = 'Variável';
   document.getElementById('e-value').value = '';
-  document.getElementById('e-date').value  = new Date().toISOString().slice(0,10);
+  document.getElementById('e-date').value  = localDateStr();
   document.getElementById('e-notes').value = '';
   document.getElementById('expense-modal').classList.add('open');
 }
@@ -6883,7 +6898,7 @@ function importShopee(event) {
 
         // Data: "2026-06-02 16:15" → data "2026-06-02" + hora "16:15"
         const dateParts = dateRaw.split(' ');
-        const dateStr = dateParts[0] || new Date().toISOString().slice(0, 10);
+        const dateStr = dateParts[0] || localDateStr();
         const timeStr = dateParts[1] || null; // "16:15" — usado no mapa de calor por horário
 
         // Tenta encontrar o produto no sistema (considerando a variação)
