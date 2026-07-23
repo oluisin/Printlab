@@ -2499,17 +2499,33 @@
       </div>
       <div class="field">
         <label>Valor (R$)</label>
-        <input id="e-value" type="number" step="0.01" placeholder="0,00" />
+        <input id="e-value" type="number" step="0.01" placeholder="0,00" oninput="updateInstallmentPreview()" />
       </div>
       <div class="field">
         <label>Data</label>
-        <input id="e-date" type="date" />
+        <input id="e-date" type="date" onchange="updateInstallmentPreview()" />
       </div>
     </div>
     <div class="field">
       <label>Observações (opcional)</label>
       <input id="e-notes" placeholder="Fornecedor, link, NF..." />
     </div>
+
+    <div class="field" id="e-installment-wrap">
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer;text-transform:none;letter-spacing:0;font-weight:400;color:var(--text)">
+        <input type="checkbox" id="e-installment-toggle" style="width:16px;height:16px;accent-color:var(--accent)" onchange="toggleInstallmentFields()" />
+        Compra parcelada?
+      </label>
+    </div>
+
+    <div id="e-installment-fields" style="display:none">
+      <div class="field">
+        <label>Número de Parcelas</label>
+        <input id="e-installment-count" type="number" min="2" max="24" step="1" placeholder="Ex: 3" oninput="updateInstallmentPreview()" />
+      </div>
+      <div id="e-installment-preview" style="font-size:12px;color:var(--text3);background:var(--bg3);border-radius:8px;padding:10px 12px;margin-bottom:14px;line-height:1.6"></div>
+    </div>
+
     <input type="hidden" id="e-editing-id" value="" />
     <div class="modal-actions">
       <button class="btn-ghost" onclick="closeExpenseModal()">Cancelar</button>
@@ -6976,7 +6992,7 @@ function renderExpenses() {
     const tr = document.createElement('tr');
     tr.innerHTML = `
       <td style="color:var(--text2);font-size:13px">${d}/${mo}/${y.slice(2)}</td>
-      <td style="font-weight:500">${e.desc}${e.notes ? '<div style="font-size:11px;color:var(--text3);margin-top:2px">'+e.notes+'</div>' : ''}</td>
+      <td style="font-weight:500">${e.desc}${e.installmentTotal ? ` <span class="badge" style="background:rgba(167,139,250,0.15);color:#a78bfa;font-size:10px">💳 ${e.installmentNum}/${e.installmentTotal}</span>` : ''}${e.notes ? '<div style="font-size:11px;color:var(--text3);margin-top:2px">'+e.notes+'</div>' : ''}</td>
       <td><span class="badge" style="background:${color}22;color:${color}">${e.category}</span></td>
       <td><span class="badge" style="background:${typeColor}22;color:${typeColor}">${e.type}</span></td>
       <td style="font-weight:600;color:#f87171">−${fmt(e.value)}</td>
@@ -6997,6 +7013,10 @@ function openExpenseModal(id) {
   document.getElementById('e-value').value = '';
   document.getElementById('e-date').value  = localDateStr();
   document.getElementById('e-notes').value = '';
+  document.getElementById('e-installment-toggle').checked = false;
+  document.getElementById('e-installment-count').value = '';
+  document.getElementById('e-installment-wrap').style.display = 'block';
+  toggleInstallmentFields();
   document.getElementById('expense-modal').classList.add('open');
 }
 
@@ -7010,10 +7030,67 @@ function editExpense(id) {
   document.getElementById('e-value').value = e.value;
   document.getElementById('e-date').value  = e.date;
   document.getElementById('e-notes').value = e.notes || '';
+  // Parcelamento só se aplica na criação — ao editar, edita-se só esta parcela isoladamente
+  document.getElementById('e-installment-toggle').checked = false;
+  document.getElementById('e-installment-fields').style.display = 'none';
+  document.getElementById('e-installment-wrap').style.display = 'none';
   document.getElementById('expense-modal').classList.add('open');
 }
 
 function closeExpenseModal() { document.getElementById('expense-modal').classList.remove('open'); }
+
+// ══════════════════════════════════════════
+//  COMPRA PARCELADA — helpers
+// ══════════════════════════════════════════
+function toggleInstallmentFields() {
+  const checked = document.getElementById('e-installment-toggle').checked;
+  document.getElementById('e-installment-fields').style.display = checked ? 'block' : 'none';
+  updateInstallmentPreview();
+}
+
+// Soma N meses a uma data "YYYY-MM-DD", preservando o dia (com clamp pro
+// último dia do mês, caso o mês de destino seja mais curto — ex: dia 31
+// de janeiro + 1 mês vira 28/29 de fevereiro, não "3 de março").
+function addMonthsClamped(dateStr, monthsToAdd) {
+  const [y, m, d] = dateStr.split('-').map(Number);
+  const targetMonthIndex = (m - 1) + monthsToAdd; // 0-indexed, pode passar de 11
+  const targetYear  = y + Math.floor(targetMonthIndex / 12);
+  const targetMonth = ((targetMonthIndex % 12) + 12) % 12; // 0-11
+  const lastDayOfTargetMonth = new Date(targetYear, targetMonth + 1, 0).getDate();
+  const finalDay = Math.min(d, lastDayOfTargetMonth);
+  return targetYear + '-' + String(targetMonth + 1).padStart(2,'0') + '-' + String(finalDay).padStart(2,'0');
+}
+
+// Divide um valor total em N parcelas, arredondadas em centavos, garantindo
+// que a SOMA das parcelas bate exatamente com o total (a última parcela
+// absorve a diferença de arredondamento).
+function splitIntoInstallments(total, count) {
+  const base = Math.floor((total / count) * 100) / 100;
+  const parts = Array(count).fill(base);
+  const soFar = base * (count - 1);
+  parts[count - 1] = +(total - soFar).toFixed(2);
+  return parts;
+}
+
+function updateInstallmentPreview() {
+  const previewEl = document.getElementById('e-installment-preview');
+  const value = parseFloat(document.getElementById('e-value').value);
+  const count = parseInt(document.getElementById('e-installment-count').value);
+  const date  = document.getElementById('e-date').value;
+  if (!previewEl) return;
+  if (isNaN(value) || value <= 0 || isNaN(count) || count < 2 || !date) {
+    previewEl.textContent = '';
+    return;
+  }
+  const parts = splitIntoInstallments(value, count);
+  const monthNames = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
+  const lines = parts.map((p, i) => {
+    const d = addMonthsClamped(date, i);
+    const [y, m] = d.split('-');
+    return `Parcela ${i+1}/${count}: ${fmt(p)} — ${monthNames[parseInt(m)-1]}/${y}`;
+  });
+  previewEl.innerHTML = '💡 ' + lines.join('<br>💡 ');
+}
 
 function saveExpense() {
   const desc  = document.getElementById('e-desc').value.trim();
@@ -7021,16 +7098,43 @@ function saveExpense() {
   const date  = document.getElementById('e-date').value;
   if (!desc || isNaN(value) || value <= 0 || !date) { alert('Preencha descrição, valor e data.'); return; }
 
-  const data = {
-    desc,
-    category: document.getElementById('e-cat').value,
-    type:     document.getElementById('e-type').value,
-    value,
-    date,
-    notes: document.getElementById('e-notes').value.trim(),
-  };
-
+  const category = document.getElementById('e-cat').value;
+  const type     = document.getElementById('e-type').value;
+  const notes    = document.getElementById('e-notes').value.trim();
   const editingId = document.getElementById('e-editing-id').value;
+
+  const isInstallment = !editingId && document.getElementById('e-installment-toggle').checked;
+  const installmentCount = parseInt(document.getElementById('e-installment-count').value);
+
+  if (isInstallment) {
+    if (isNaN(installmentCount) || installmentCount < 2) {
+      alert('Informe um número de parcelas válido (mínimo 2).');
+      return;
+    }
+    const parts = splitIntoInstallments(value, installmentCount);
+    const groupId = Date.now().toString() + Math.random().toString(36).slice(2,6);
+    parts.forEach((partValue, i) => {
+      expenses.push({
+        id: Date.now().toString() + '-' + i + Math.random().toString(36).slice(2,4),
+        desc: desc + ` (Parcela ${i+1}/${installmentCount})`,
+        category, type,
+        value: partValue,
+        date: addMonthsClamped(date, i),
+        notes,
+        installmentGroupId: groupId,
+        installmentNum: i + 1,
+        installmentTotal: installmentCount,
+        installmentFullValue: value,
+      });
+    });
+    save('pl_expenses', expenses);
+    closeExpenseModal();
+    renderExpenses();
+    return;
+  }
+
+  const data = { desc, category, type, value, date, notes };
+
   if (editingId) {
     expenses = expenses.map(e => e.id === editingId ? { ...e, ...data } : e);
   } else {
