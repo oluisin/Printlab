@@ -14,7 +14,7 @@
   <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet" />
   <script>
     // SheetJS for Shopee XLSX import
     (function() {
@@ -75,23 +75,23 @@
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     :root {
-      --bg:      #0B0B0D;
-      --bg2:     #131316;
-      --bg3:     #18181C;
-      --border:  #232326;
-      --accent:  #6366F1;
-      --accent2: #6366F1;
-      --text:    #EDEDF0;
-      --text2:   #8B8B93;
-      --text3:   #504F58;
-      --green:   #4ADE9C;
-      --yellow:  #E8B84D;
-      --blue:    #6366F1;
-      --gold:    #6366F1;
-      --emerald: #6366F1;
-      --sapphire:#6366F1;
-      --ruby:    #E8697A;
-      --r:       14px;
+      --bg:      #050308;
+      --bg2:     #100C16;
+      --bg3:     #170F1E;
+      --border:  #2A1E38;
+      --accent:  #FF00AA;
+      --accent2: #00DCFF;
+      --text:    #FFFFFF;
+      --text2:   #A79EB8;
+      --text3:   #6E6580;
+      --green:   #00FFB3;
+      --yellow:  #FFC800;
+      --blue:    #00DCFF;
+      --gold:    #FFC800;
+      --emerald: #00FFB3;
+      --sapphire:#00DCFF;
+      --ruby:    #FF00AA;
+      --r:       22px;
     }
 
     /* ── LIGHT THEME ── */
@@ -161,7 +161,13 @@
       --sp-5: 20px; --sp-6: 24px; --sp-7: 28px; --sp-8: 32px;
     }
     body {
-      background: var(--bg);
+      background:
+        radial-gradient(ellipse 900px 600px at 10% -10%, rgba(255,0,170,0.28), transparent 60%),
+        radial-gradient(ellipse 800px 700px at 100% 0%, rgba(0,220,255,0.24), transparent 55%),
+        radial-gradient(ellipse 900px 800px at 50% 120%, rgba(140,0,255,0.28), transparent 60%),
+        radial-gradient(ellipse 600px 500px at 90% 80%, rgba(255,200,0,0.14), transparent 55%),
+        var(--bg);
+      background-attachment: fixed;
       color: var(--text);
       font-family: 'Inter', sans-serif;
       font-size: var(--fs-md);
@@ -179,8 +185,10 @@
     #sidebar {
       width: 224px;
       min-height: 100vh;
-      background: var(--bg2);
-      border-right: 1.5px solid var(--border);
+      background: rgba(8,8,12,0.6);
+      backdrop-filter: blur(24px);
+      -webkit-backdrop-filter: blur(24px);
+      border-right: 1px solid rgba(255,255,255,0.08);
       display: flex;
       flex-direction: column;
       flex-shrink: 0;
@@ -194,7 +202,7 @@
       padding: 22px 48px; border-bottom: 1px solid var(--border);
       background: var(--bg2); position: sticky; top: 0; z-index: 50;
     }
-    #topbar .brand { font-family: 'Manrope', sans-serif; font-weight: 700; font-size: 16px; letter-spacing: 0.3px; color: var(--text); }
+    #topbar .brand { font-family: 'Space Grotesk', sans-serif; font-weight: 700; font-size: 16px; letter-spacing: 0.3px; color: var(--text); }
     #topbar .menu-strip { display: flex; gap: 26px; flex-wrap: wrap; }
     #topbar .menu-strip a {
       font-size: 13px; color: var(--text2); text-decoration: none; font-weight: 500;
@@ -254,7 +262,7 @@
       font-size: 18px;
       flex-shrink: 0;
     }
-    .logo-name { font-family: 'Manrope', sans-serif; font-weight: 800; font-size: 15px; letter-spacing: -0.3px; }
+    .logo-name { font-family: 'Space Grotesk', sans-serif; font-weight: 800; font-size: 15px; letter-spacing: -0.3px; }
     .logo-sub  { font-size: 11px; color: var(--text3); margin-top: -1px; }
 
     nav { padding: 16px 12px; flex: 1; }
@@ -305,7 +313,7 @@
       animation: splashSpin 1.1s linear infinite;
     }
     #splash-title {
-      font-family: 'Manrope', sans-serif;
+      font-family: 'Space Grotesk', sans-serif;
       font-size: 22px; font-weight: 800;
       color: #e8e4f0; letter-spacing: -0.3px;
       opacity: 0; animation: splashTextIn 0.6s ease 0.3s forwards;
@@ -347,25 +355,29 @@
 
     @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
 
-    .page-title { font-family: 'Manrope', sans-serif; font-weight: 800; font-size: var(--fs-3xl); letter-spacing: -0.5px; line-height: 1.2; }
+    .page-title { font-family: 'Space Grotesk', sans-serif; font-weight: 800; font-size: var(--fs-3xl); letter-spacing: -0.5px; line-height: 1.2; }
     .page-sub { color: var(--text3); margin-top: 4px; font-size: var(--fs-md); }
 
     /* ── CARD ── */
     .card {
-      background: var(--bg2);
-      border: 1.5px solid var(--border);
+      background: rgba(255,255,255,0.04);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid rgba(255,255,255,0.1);
       border-radius: var(--r);
       padding: 32px;
       transition: border-color 0.2s ease, transform 0.2s ease;
     }
-    .card-title { font-family: 'Manrope', sans-serif; font-weight: 700; font-size: var(--fs-lg); margin-bottom: 20px; }
+    .card-title { font-family: 'Space Grotesk', sans-serif; font-weight: 700; font-size: var(--fs-lg); margin-bottom: 20px; }
 
     /* ── KPI GRID ── */
     .kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px; }
     .kpi-card {
-      transition: transform 0.18s ease, border-color 0.18s ease;
-      background: var(--bg2);
-      border: 1.5px solid var(--border);
+      transition: transform 0.18s ease, border-color 0.18s ease, box-shadow 0.3s ease;
+      background: rgba(255,255,255,0.04);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid rgba(255,255,255,0.1);
       border-radius: var(--r);
       padding: 26px 30px;
       display: flex;
@@ -373,7 +385,24 @@
       align-items: flex-start;
       position: relative;
       overflow: hidden;
+      animation: kpiFloat 5s ease-in-out infinite;
     }
+    .kpi-card:nth-child(2) { animation-delay: 0.4s; }
+    .kpi-card:nth-child(3) { animation-delay: 0.8s; }
+    .kpi-card:nth-child(4) { animation-delay: 1.2s; }
+    @keyframes kpiFloat { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
+    .greeting-shimmer {
+      background: linear-gradient(90deg,#fff 20%,#FF7BE0 50%,#7BE0FF 80%);
+      background-size: 200% auto; -webkit-background-clip: text; background-clip: text; color: transparent;
+      animation: greetShimmer 6s linear infinite;
+    }
+    @keyframes greetShimmer { 0% { background-position: 0% 50%; } 100% { background-position: 200% 50%; } }
+    @media (prefers-reduced-motion: reduce) { .greeting-shimmer { animation: none; } }
+    @media (prefers-reduced-motion: reduce) { .kpi-card { animation: none; } }
+    .kpi-card.k1 { box-shadow: 0 0 40px rgba(255,0,170,0.12); }
+    .kpi-card.k2 { box-shadow: 0 0 40px rgba(0,220,255,0.12); }
+    .kpi-card.k3 { box-shadow: 0 0 40px rgba(255,200,0,0.12); }
+    .kpi-card.k4 { box-shadow: 0 0 40px rgba(140,0,255,0.12); }
     .kpi-card::before {
       content: '';
       position: absolute;
@@ -489,7 +518,7 @@
       animation: fadeIn 0.25s ease;
     }
     .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
-    .modal-title { font-family: 'Manrope', sans-serif; font-weight: 700; font-size: var(--fs-xl); }
+    .modal-title { font-family: 'Space Grotesk', sans-serif; font-weight: 700; font-size: var(--fs-xl); }
     .modal-close { background: none; border: none; color: var(--text2); font-size: 22px; cursor: pointer; line-height: 1; }
 
     /* ── FORM ── */
@@ -526,14 +555,14 @@
 
     /* ── SUMMARY CARDS ── */
     .summary-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 24px; }
-    .summary-card { background: var(--bg2); border: 1.5px solid var(--border); border-radius: var(--r); padding: 26px 30px; transition: transform 0.18s ease, border-color 0.18s ease; }
+    .summary-card { background: rgba(255,255,255,0.04); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border: 1px solid rgba(255,255,255,0.1); border-radius: var(--r); padding: 26px 30px; transition: transform 0.18s ease, border-color 0.18s ease; }
     .summary-card:hover { transform: translateY(-2px); border-color: rgba(59,130,246,0.3); }
     .summary-label { font-size: var(--fs-sm); color: var(--text3); font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 6px; }
     .summary-value { font-family: 'JetBrains Mono', monospace; font-size: var(--fs-2xl); font-weight: 700; }
 
     /* ── SETTINGS ── */
     .settings-card { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--r); padding: 24px; margin-bottom: 20px; }
-    .settings-title { font-family: 'Manrope', sans-serif; font-weight: 700; font-size: 16px; margin-bottom: 16px; }
+    .settings-title { font-family: 'Space Grotesk', sans-serif; font-weight: 700; font-size: 16px; margin-bottom: 16px; }
     .preset-row { display: grid; grid-template-columns: 1fr 1fr auto; gap: 12px; align-items: center; margin-bottom: 10px; }
     .home-banner {
       position: relative; width: 100%; height: 150px;
@@ -550,7 +579,7 @@
       position: relative; z-index: 1; padding: 18px 22px;
     }
     .home-banner-title {
-      font-family: 'Manrope', sans-serif; font-weight: 800; font-size: 22px;
+      font-family: 'Space Grotesk', sans-serif; font-weight: 800; font-size: 22px;
       color: #fff; letter-spacing: -0.3px;
       text-shadow: 0 2px 12px rgba(0,0,0,0.35);
     }
@@ -636,7 +665,7 @@
       .empty-state-icon { animation: none; }
     }
     .empty-state-title {
-      font-family: 'Manrope', sans-serif; font-weight: 700; font-size: var(--fs-lg);
+      font-family: 'Space Grotesk', sans-serif; font-weight: 700; font-size: var(--fs-lg);
       color: var(--text); margin-bottom: 6px;
     }
     .empty-state-desc {
@@ -1278,7 +1307,7 @@
 
     <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:26px;flex-wrap:wrap;gap:12px">
       <div>
-        <div id="home-greeting" style="font-family:'Baloo 2',sans-serif;font-weight:700;font-size:26px"></div>
+        <div id="home-greeting" class="greeting-shimmer" style="font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:30px"></div>
         <div id="home-date" style="font-size:14px;color:var(--text2);margin-top:6px;font-weight:500"></div>
       </div>
       <button class="btn-primary" onclick="openSaleModal();navigate('sales')" style="font-family:'Inter';font-weight:700;font-size:14px;background:var(--accent);color:#fff;border:none;border-radius:10px;padding:12px 22px;cursor:pointer">+ Nova Venda</button>
@@ -1290,33 +1319,33 @@
       <div style="background:var(--bg2);border:2px solid var(--border);border-radius:20px;padding:20px">
         <div style="width:38px;height:38px;border-radius:12px;background:var(--bg3);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:16px;margin-bottom:12px">🧾</div>
         <div style="font-size:11px;color:var(--text2);font-weight:600;margin-bottom:4px">Pedidos hoje</div>
-        <div id="home-today-sales" style="font-family:'Baloo 2',sans-serif;font-weight:700;font-size:19px">—</div>
+        <div id="home-today-sales" style="font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:19px">—</div>
       </div>
       <div style="background:var(--bg2);border:2px solid var(--border);border-radius:20px;padding:20px">
         <div style="width:38px;height:38px;border-radius:12px;background:var(--bg3);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:16px;margin-bottom:12px">💰</div>
         <div style="font-size:11px;color:var(--text2);font-weight:600;margin-bottom:4px">Receita hoje</div>
-        <div id="home-today-rev" style="font-family:'Baloo 2',sans-serif;font-weight:700;font-size:19px">—</div>
+        <div id="home-today-rev" style="font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:19px">—</div>
       </div>
       <div style="background:var(--bg2);border:2px solid var(--border);border-radius:20px;padding:20px">
         <div style="width:38px;height:38px;border-radius:12px;background:var(--accent);opacity:0.15;display:flex;align-items:center;justify-content:center;font-size:16px;margin-bottom:12px">📈</div>
         <div style="font-size:11px;color:var(--text2);font-weight:600;margin-bottom:4px">Lucro hoje</div>
-        <div id="home-today-profit" style="font-family:'Baloo 2',sans-serif;font-weight:700;font-size:19px;color:var(--accent2)">—</div>
+        <div id="home-today-profit" style="font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:19px;color:var(--accent2)">—</div>
       </div>
       <div style="background:var(--bg2);border:2px solid var(--border);border-radius:20px;padding:20px">
         <div style="width:38px;height:38px;border-radius:12px;background:var(--bg3);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:16px;margin-bottom:12px">📦</div>
         <div style="font-size:11px;color:var(--text2);font-weight:600;margin-bottom:4px">Unidades hoje</div>
-        <div id="home-today-units" style="font-family:'Baloo 2',sans-serif;font-weight:700;font-size:19px">—</div>
+        <div id="home-today-units" style="font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:19px">—</div>
       </div>
     </div>
 
     <!-- Resumo do mês + Termômetro -->
     <div style="display:grid;grid-template-columns:1.4fr 1fr;gap:16px;margin-bottom:26px">
       <div style="background:var(--bg2);border:2px solid var(--border);border-radius:20px;padding:24px">
-        <div id="home-month-label" style="font-family:'Baloo 2',sans-serif;font-weight:700;font-size:16px;margin-bottom:16px">Este mês</div>
+        <div id="home-month-label" style="font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:16px;margin-bottom:16px">Este mês</div>
         <div id="home-month-summary" style="display:flex;gap:28px;flex-wrap:wrap">
-          <div><div style="font-size:11px;color:var(--text2);margin-bottom:4px;font-weight:600">Receita</div><div style="font-family:'Baloo 2',sans-serif;font-weight:700;font-size:20px" id="home-month-rev">—</div></div>
-          <div><div style="font-size:11px;color:var(--text2);margin-bottom:4px;font-weight:600">Lucro</div><div style="font-family:'Baloo 2',sans-serif;font-weight:700;font-size:20px;color:var(--accent2)" id="home-month-profit">—</div></div>
-          <div><div style="font-size:11px;color:var(--text2);margin-bottom:4px;font-weight:600">Unidades</div><div style="font-family:'Baloo 2',sans-serif;font-weight:700;font-size:20px" id="home-month-units">—</div></div>
+          <div><div style="font-size:11px;color:var(--text2);margin-bottom:4px;font-weight:600">Receita</div><div style="font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:20px" id="home-month-rev">—</div></div>
+          <div><div style="font-size:11px;color:var(--text2);margin-bottom:4px;font-weight:600">Lucro</div><div style="font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:20px;color:var(--accent2)" id="home-month-profit">—</div></div>
+          <div><div style="font-size:11px;color:var(--text2);margin-bottom:4px;font-weight:600">Unidades</div><div style="font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:20px" id="home-month-units">—</div></div>
         </div>
         <div id="home-goal-wrap" style="display:none;margin-top:18px">
           <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text2);margin-bottom:6px;font-weight:600">
@@ -1330,7 +1359,7 @@
       </div>
 
       <div style="background:var(--bg2);border:2px solid var(--border);border-radius:20px;padding:24px">
-        <div style="font-family:'Baloo 2',sans-serif;font-weight:700;font-size:16px;margin-bottom:14px">🔥 Termômetro</div>
+        <div style="font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:16px;margin-bottom:14px">🔥 Termômetro</div>
         <div id="therm-verdict" style="display:inline-flex;font-size:12px;font-weight:700;padding:6px 14px;border-radius:20px;margin-bottom:14px"></div>
         <div id="therm-body">
           <div style="display:flex;align-items:center;gap:14px">
@@ -1341,7 +1370,7 @@
                   <path id="therm-arc" d="M 15 75 A 60 60 0 0 1 135 75" fill="none" stroke="var(--accent2)" stroke-width="14" stroke-linecap="round" stroke-dasharray="188.5" stroke-dashoffset="188.5" style="transition:stroke-dashoffset 0.8s ease, stroke 0.4s"/>
                 </svg>
                 <div style="position:absolute;bottom:0;left:0;right:0">
-                  <div id="therm-gauge-val" style="font-family:'Baloo 2',sans-serif;font-size:17px;font-weight:700;line-height:1">—</div>
+                  <div id="therm-gauge-val" style="font-family:'Space Grotesk',sans-serif;font-size:17px;font-weight:700;line-height:1">—</div>
                 </div>
               </div>
             </div>
@@ -1357,7 +1386,7 @@
     <!-- Últimas vendas -->
     <div style="background:var(--bg2);border:2px solid var(--border);border-radius:20px;padding:24px">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
-        <div style="font-family:'Baloo 2',sans-serif;font-weight:700;font-size:16px">Últimas vendas</div>
+        <div style="font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:16px">Últimas vendas</div>
         <button onclick="navigate('sales')" style="background:none;border:none;color:var(--accent);font-size:12px;cursor:pointer;font-weight:700">Ver todas →</button>
       </div>
       <div id="home-recent-sales"></div>
@@ -7512,7 +7541,7 @@ let _tryInitAttempts = 0;
 // Wrapper defensivo: evita erro se o Chart.js falhar ao carregar do CDN
 function safeChart(ctx, config) {
   if (typeof Chart === 'undefined') { console.warn('Chart.js indisponível — gráfico não desenhado.'); return null; }
-  return safeChart(ctx, config);
+  return new Chart(ctx, config);
 }
 
 function tryInit() {
