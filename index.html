@@ -7871,7 +7871,7 @@ function importShopee(event) {
       // Statuses a ignorar (cancelados)
       const skipStatus = ['cancelado', 'cancelada'];
 
-      let imported = 0, skipped = 0, deadlineUpdated = 0, notFound = [];
+      let imported = 0, skipped = 0, deadlineUpdated = 0, statusUpdated = 0, notFound = [];
       const newSales = [];
       // Chave composta: pedido + variação + sku para não descartar variações diferentes do mesmo pedido
       const makeKey = (s) => (s.shopeeOrderId || '') + '|' + (s._variationName || '') + '|' + (s._skuRef || '');
@@ -7995,12 +7995,18 @@ function importShopee(event) {
 
         // Chave composta para deduplicação (pedido + variação + sku)
         const dedupKey = orderId + '|' + variationName + '|' + skuRef;
-        // Pula se já importado (mesma combinação pedido+variação) — mas se esse relatório trouxe
-        // a data-limite de envio e a venda já existente ainda não tinha, atualiza só esse dado.
+        // Pula se já importado (mesma combinação pedido+variação) — mas atualiza dados que mudaram
+        // desde a última importação: status do pedido (essencial pra saber quem já foi
+        // despachado/entregue) e data-limite de envio (quando ainda não tinha).
         if (existingIds.has(dedupKey)) {
-          if (shipDeadlineDate) {
-            const existingSale = sales.find(s => (s.shopeeOrderId||'') + '|' + (s._variationName||'') + '|' + (s._skuRef||'') === dedupKey);
-            if (existingSale && !existingSale.shipDeadlineDate) {
+          const existingSale = sales.find(s => (s.shopeeOrderId||'') + '|' + (s._variationName||'') + '|' + (s._skuRef||'') === dedupKey);
+          if (existingSale) {
+            const newStatus = row['Status do pedido'] || '';
+            if (newStatus && existingSale.shopeeStatus !== newStatus) {
+              existingSale.shopeeStatus = newStatus;
+              statusUpdated++;
+            }
+            if (shipDeadlineDate && !existingSale.shipDeadlineDate) {
               existingSale.shipDeadlineDate = shipDeadlineDate;
               existingSale.shipDeadlineTime = shipDeadlineTime;
               if (!existingSale.recipientName) existingSale.recipientName = recipientName || null;
@@ -8066,7 +8072,7 @@ function importShopee(event) {
       });
 
       // Adiciona as novas vendas
-      if (newSales.length > 0 || deadlineUpdated > 0) {
+      if (newSales.length > 0 || deadlineUpdated > 0 || statusUpdated > 0) {
         sales = newSales.length > 0 ? [...sales, ...newSales] : sales;
         save('pl_sales', sales);
       }
@@ -8075,6 +8081,7 @@ function importShopee(event) {
       let msgText = `<i class="ti ti-circle-check ic"></i> ${imported} pedido(s) importado(s) com sucesso!`;
       if (skipped > 0) msgText += ` ${skipped} ignorado(s) (cancelados, duplicados ou sem valor).`;
       if (deadlineUpdated > 0) msgText += ` ${deadlineUpdated} pedido(s) já existente(s) ganharam data-limite de envio.`;
+      if (statusUpdated > 0) msgText += ` ${statusUpdated} pedido(s) tiveram o status atualizado (ex: despachado/entregue).`;
 
       msg.style.background = 'rgba(74,222,128,0.1)';
       msg.style.border = '1px solid rgba(74,222,128,0.25)';
