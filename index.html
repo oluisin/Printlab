@@ -3420,13 +3420,38 @@ const DEADLINE_GROUPS = [
   { key: 'depois',  label: '🟢 Depois',      color: 'var(--green)', test: (d) => d > 7 },
 ];
 
+// Filtro de produto ativo na tela ('all' = todos)
+let deadlineProductFilter = 'all';
+
 function groupDeadlines() {
-  const pending = sales.filter(isPendingShipment).map(s => ({ s, days: daysUntilDeadline(s.shipDeadlineDate) }));
+  let pending = sales.filter(isPendingShipment);
+  if (deadlineProductFilter !== 'all') pending = pending.filter(s => s.productId === deadlineProductFilter);
+  pending = pending.map(s => ({ s, days: daysUntilDeadline(s.shipDeadlineDate) }));
   const groups = DEADLINE_GROUPS.map(g => ({
     ...g,
     items: pending.filter(x => g.test(x.days)).sort((a, b) => a.s.shipDeadlineDate.localeCompare(b.s.shipDeadlineDate) || (a.s.shipDeadlineTime||'').localeCompare(b.s.shipDeadlineTime||'')),
   }));
   return groups.filter(g => g.items.length > 0);
+}
+
+// Resumo de quantidade a produzir por produto+variação — pra montar a tiragem/chapa de impressão.
+// Sempre soma TODOS os pendentes (ignora o filtro de produto), pra dar visão geral de tudo que falta.
+function deadlineProductSummary() {
+  const pending = sales.filter(isPendingShipment);
+  const map = new Map(); // productId|variation -> { productId, productName, variation, qty }
+  pending.forEach(s => {
+    const p = products.find(x => x.id === s.productId);
+    const productName = p ? p.name : 'Produto removido';
+    const key = (s.productId || '—') + '|' + (s.variationName || '');
+    if (!map.has(key)) map.set(key, { productId: s.productId, productName, variation: s.variationName || '', qty: 0 });
+    map.get(key).qty += s.qty;
+  });
+  return [...map.values()].sort((a, b) => b.qty - a.qty || a.productName.localeCompare(b.productName));
+}
+
+function setDeadlineProductFilter(productId) {
+  deadlineProductFilter = productId;
+  renderDeadlines();
 }
 
 function formatDeadline(s, days) {
@@ -3470,12 +3495,42 @@ function renderDeadlines() {
   const listEl = document.getElementById('deadlines-list');
   if (!listEl) return;
 
-  const groups = groupDeadlines();
+  const allPending = sales.filter(isPendingShipment);
 
-  if (groups.length === 0) {
+  if (allPending.length === 0) {
     listEl.innerHTML = emptyStateHTML({
       icon: '<i class="ti ti-circle-check ic"></i>', title: 'Nenhum prazo pendente!',
       desc: 'Importe o relatório "A Enviar" da Shopee (aba Vendas) pra essa lista se preencher automaticamente.',
+    });
+    return;
+  }
+
+  // Filtro por produto (opções construídas a partir de quem tem pendência agora)
+  const filterOptions = [...new Map(allPending.map(s => [s.productId, products.find(p => p.id === s.productId)?.name || 'Produto removido'])).entries()]
+    .sort((a, b) => a[1].localeCompare(b[1]));
+  const filterBar = `<div style="margin-bottom:14px">
+    <select onchange="setDeadlineProductFilter(this.value)" style="width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:9px 12px;color:var(--text);font-size:13px">
+      <option value="all" ${deadlineProductFilter === 'all' ? 'selected' : ''}>Todos os produtos (${allPending.length} pendentes)</option>
+      ${filterOptions.map(([id, name]) => `<option value="${id}" ${deadlineProductFilter === id ? 'selected' : ''}>${name}</option>`).join('')}
+    </select>
+  </div>`;
+
+  // Resumo de tiragem — quanto produzir de cada produto/variação, somando tudo que está pendente
+  const summary = deadlineProductSummary();
+  const summaryBox = `<div class="card" style="margin-bottom:14px;padding:14px 20px">
+    <div style="font-weight:700;font-size:13px;margin-bottom:8px">📋 Tiragem — total a produzir</div>
+    ${summary.map(item => `<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;font-size:13px">
+      <span style="color:var(--text2)">${item.productName}${item.variation ? ` <span style="color:var(--text3)">· ${item.variation}</span>` : ''}</span>
+      <span style="font-weight:700;color:var(--accent)">${item.qty}x</span>
+    </div>`).join('')}
+  </div>`;
+
+  const groups = groupDeadlines();
+
+  if (groups.length === 0) {
+    listEl.innerHTML = filterBar + summaryBox + emptyStateHTML({
+      icon: '<i class="ti ti-filter ic"></i>', title: 'Nada pendente com esse filtro',
+      desc: 'Tente selecionar outro produto ou volte para "Todos os produtos".',
     });
     return;
   }
@@ -3495,7 +3550,7 @@ function renderDeadlines() {
     </button>
   </div>`;
 
-  listEl.innerHTML = bulkBar + groups.map(g => {
+  listEl.innerHTML = filterBar + summaryBox + bulkBar + groups.map(g => {
     const rows = g.items.map(({ s, days }) => {
       const p = products.find(x => x.id === s.productId);
       const productName = p ? p.name : 'Produto removido';
