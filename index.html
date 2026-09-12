@@ -1950,7 +1950,9 @@
       <div style="font-size:13px;color:var(--text2);line-height:1.7">
         A data-limite vem automaticamente do campo <strong>"Data prevista de envio"</strong> quando você
         importa o relatório "A Enviar" da Shopee (aba Vendas → Importar XLSX) — não precisa cadastrar nada
-        manualmente. Um pedido some daqui quando é marcado <strong>"Pronto p/ postar"</strong> na Fila de Produção.
+        manualmente. Um pedido some daqui quando é marcado <strong>"Pronto p/ postar"</strong> na Fila de Produção,
+        pelo botão de check ao lado de cada pedido, ou selecionando vários e usando <strong>"Dar baixa em massa"</strong>
+        no topo da lista — útil pra limpar de uma vez pedidos antigos que você já sabe que foram entregues.
       </div>
     </div>
   </div>
@@ -3437,6 +3439,33 @@ function formatDeadline(s, days) {
   return `${d}/${m}${s.shipDeadlineTime ? ' ' + s.shipDeadlineTime : ''}${rel}`;
 }
 
+// Seleção pra dar baixa em massa (ex: limpar pedidos antigos que você já sabe que foram
+// entregues, sem depender de detecção automática — você confirma, o sistema executa).
+let deadlineSelection = new Set();
+function toggleDeadlineSelect(saleId, checked) {
+  if (checked) deadlineSelection.add(saleId); else deadlineSelection.delete(saleId);
+  renderDeadlines();
+}
+function selectAllDeadlines() {
+  groupDeadlines().forEach(g => g.items.forEach(({ s }) => deadlineSelection.add(s.id)));
+  renderDeadlines();
+}
+function clearDeadlineSelection() {
+  deadlineSelection.clear();
+  renderDeadlines();
+}
+function bulkMarkShipmentDone() {
+  if (deadlineSelection.size === 0) return;
+  if (!confirm(`Dar baixa em ${deadlineSelection.size} pedido(s) selecionado(s)? Isso marca todos como produzidos e postados.`)) return;
+  deadlineSelection.forEach(id => {
+    const s = sales.find(x => x.id === id);
+    if (s) { s.produced = true; s.readyToPost = true; }
+  });
+  save('pl_sales', sales);
+  deadlineSelection.clear();
+  renderDeadlines();
+}
+
 function renderDeadlines() {
   const listEl = document.getElementById('deadlines-list');
   if (!listEl) return;
@@ -3451,7 +3480,22 @@ function renderDeadlines() {
     return;
   }
 
-  listEl.innerHTML = groups.map(g => {
+  // Remove da seleção qualquer item que não está mais pendente (já resolvido por outra via)
+  const pendingIds = new Set(groups.flatMap(g => g.items.map(({ s }) => s.id)));
+  [...deadlineSelection].forEach(id => { if (!pendingIds.has(id)) deadlineSelection.delete(id); });
+  const selCount = deadlineSelection.size;
+
+  const bulkBar = `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;gap:10px;flex-wrap:wrap">
+    <div style="font-size:12px;color:var(--text2)">
+      <a href="javascript:void(0)" onclick="selectAllDeadlines()" style="color:var(--accent);text-decoration:none">Selecionar todos</a>
+      ${selCount > 0 ? ` · <a href="javascript:void(0)" onclick="clearDeadlineSelection()" style="color:var(--text2);text-decoration:none">Limpar seleção (${selCount})</a>` : ''}
+    </div>
+    <button onclick="bulkMarkShipmentDone()" ${selCount === 0 ? 'disabled' : ''} style="background:${selCount > 0 ? 'var(--green)' : 'var(--bg3)'};color:${selCount > 0 ? '#08130d' : 'var(--text3)'};border:none;border-radius:8px;padding:8px 14px;font-size:12px;font-weight:600;cursor:${selCount > 0 ? 'pointer' : 'not-allowed'};display:flex;align-items:center;gap:6px;flex-shrink:0">
+      <i class="ti ti-check ic"></i> Dar baixa${selCount > 0 ? ` em ${selCount}` : ''}
+    </button>
+  </div>`;
+
+  listEl.innerHTML = bulkBar + groups.map(g => {
     const rows = g.items.map(({ s, days }) => {
       const p = products.find(x => x.id === s.productId);
       const productName = p ? p.name : 'Produto removido';
@@ -3459,7 +3503,9 @@ function renderDeadlines() {
       const thumb = p?.photo
         ? `<img src="${p.photo}" style="width:52px;height:52px;border-radius:8px;object-fit:cover;flex-shrink:0" alt="${productName}" />`
         : `<div style="width:52px;height:52px;border-radius:8px;background:color-mix(in srgb, ${g.color} 15%, var(--bg3));display:flex;align-items:center;justify-content:center;flex-shrink:0;font-weight:700;font-size:18px;color:${g.color}">${initial}</div>`;
-      return `<div style="display:flex;gap:12px;padding:12px 0;border-bottom:1px solid var(--border)">
+      const checked = deadlineSelection.has(s.id) ? 'checked' : '';
+      return `<div style="display:flex;gap:10px;padding:12px 0;border-bottom:1px solid var(--border)">
+        <input type="checkbox" ${checked} onchange="toggleDeadlineSelect('${s.id}', this.checked)" style="width:18px;height:18px;margin-top:16px;accent-color:var(--green);flex-shrink:0;cursor:pointer" />
         ${thumb}
         <div style="flex:1;min-width:0">
           <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
