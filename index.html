@@ -3517,8 +3517,14 @@ function renderDeadlines() {
 
   // Resumo de tiragem — quanto produzir de cada produto/variação, somando tudo que está pendente
   const summary = deadlineProductSummary();
+  const totalQty = summary.reduce((a, i) => a + i.qty, 0);
   const summaryBox = `<div class="card" style="margin-bottom:14px;padding:14px 20px">
-    <div style="font-weight:700;font-size:13px;margin-bottom:8px">📋 Tiragem — total a produzir</div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+      <div style="font-weight:700;font-size:13px">📋 Tiragem — total a produzir</div>
+      <button onclick="shareTiragemWhatsApp()" title="Compartilhar tiragem no WhatsApp" style="background:var(--bg3);border:1px solid var(--border);border-radius:8px;width:30px;height:30px;cursor:pointer;color:var(--green);flex-shrink:0;display:flex;align-items:center;justify-content:center">
+        <i class="ti ti-brand-whatsapp ic"></i>
+      </button>
+    </div>
     ${summary.map(item => `<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;font-size:13px">
       <span style="color:var(--text2)">${item.productName}${item.variation ? ` <span style="color:var(--text3)">· ${item.variation}</span>` : ''}</span>
       <span style="font-weight:700;color:var(--accent)">${item.qty}x</span>
@@ -3597,6 +3603,21 @@ function markShipmentDone(saleId) {
   renderDeadlines();
   if (document.getElementById('page-production')?.classList.contains('active')) renderProductionQueue();
   if (document.getElementById('page-home')?.classList.contains('active')) renderHome();
+}
+
+function shareTiragemWhatsApp() {
+  const summary = deadlineProductSummary();
+  if (summary.length === 0) { alert('Não há nenhuma tiragem pendente pra compartilhar.'); return; }
+
+  const totalQty = summary.reduce((a, i) => a + i.qty, 0);
+  let msg = `📋 *Tiragem — total a produzir*\n\n`;
+  summary.forEach(item => {
+    msg += `• ${item.productName}${item.variation ? ` (${item.variation})` : ''} — *${item.qty}x*\n`;
+  });
+  msg += `\nTotal: *${totalQty} peça(s)* pendente(s)`;
+
+  const url = 'https://wa.me/?text=' + encodeURIComponent(msg);
+  window.open(url, '_blank');
 }
 
 function shareDeadlinesWhatsApp() {
