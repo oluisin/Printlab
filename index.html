@@ -3438,15 +3438,30 @@ function groupDeadlines() {
 // Sempre soma TODOS os pendentes (ignora o filtro de produto), pra dar visão geral de tudo que falta.
 function deadlineProductSummary() {
   const pending = sales.filter(isPendingShipment);
-  const map = new Map(); // productId|variation -> { productId, productName, variation, qty }
+  const map = new Map(); // productId|variation -> { productId, productName, variation, qty, earliestDeadline }
   pending.forEach(s => {
     const p = products.find(x => x.id === s.productId);
     const productName = p ? p.name : 'Produto removido';
     const key = (s.productId || '—') + '|' + (s.variationName || '');
-    if (!map.has(key)) map.set(key, { productId: s.productId, productName, variation: s.variationName || '', qty: 0 });
-    map.get(key).qty += s.qty;
+    if (!map.has(key)) map.set(key, { productId: s.productId, productName, variation: s.variationName || '', qty: 0, earliestDeadline: null });
+    const item = map.get(key);
+    item.qty += s.qty;
+    if (s.shipDeadlineDate && (!item.earliestDeadline || s.shipDeadlineDate < item.earliestDeadline)) item.earliestDeadline = s.shipDeadlineDate;
   });
-  return [...map.values()].sort((a, b) => b.qty - a.qty || a.productName.localeCompare(b.productName));
+  return [...map.values()].sort((a, b) => (a.earliestDeadline || '9999').localeCompare(b.earliestDeadline || '9999') || b.qty - a.qty);
+}
+
+// Formata uma data-limite "sozinha" (sem hora), pro resumo de tiragem — mesmo padrão de urgência da lista.
+function formatDeadlineShort(dateStr) {
+  if (!dateStr) return '';
+  const days = daysUntilDeadline(dateStr);
+  const [y, m, d] = dateStr.split('-');
+  let rel = '';
+  if (days < 0) rel = `atrasado ${Math.abs(days)}d`;
+  else if (days === 0) rel = 'hoje';
+  else if (days === 1) rel = 'amanhã';
+  else rel = `em ${days}d`;
+  return `${d}/${m} (${rel})`;
 }
 
 function setDeadlineProductFilter(productId) {
@@ -3527,7 +3542,10 @@ function renderDeadlines() {
     </div>
     ${summary.map(item => `<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;font-size:13px">
       <span style="color:var(--text2)">${item.productName}${item.variation ? ` <span style="color:var(--text3)">· ${item.variation}</span>` : ''}</span>
-      <span style="font-weight:700;color:var(--accent)">${item.qty}x</span>
+      <span style="text-align:right;flex-shrink:0">
+        <span style="font-weight:700;color:var(--accent)">${item.qty}x</span>
+        ${item.earliestDeadline ? `<span style="display:block;font-size:10px;color:var(--text3)">${formatDeadlineShort(item.earliestDeadline)}</span>` : ''}
+      </span>
     </div>`).join('')}
   </div>`;
 
@@ -3612,7 +3630,8 @@ function shareTiragemWhatsApp() {
   const totalQty = summary.reduce((a, i) => a + i.qty, 0);
   let msg = `📋 *Tiragem — total a produzir*\n\n`;
   summary.forEach(item => {
-    msg += `• ${item.productName}${item.variation ? ` (${item.variation})` : ''} — *${item.qty}x*\n`;
+    const dateStr = item.earliestDeadline ? ` — mais urgente: ${formatDeadlineShort(item.earliestDeadline)}` : '';
+    msg += `• ${item.productName}${item.variation ? ` (${item.variation})` : ''} — *${item.qty}x*${dateStr}\n`;
   });
   msg += `\nTotal: *${totalQty} peça(s)* pendente(s)`;
 
