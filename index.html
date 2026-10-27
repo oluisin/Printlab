@@ -7826,10 +7826,10 @@ function importShopee(event) {
       const makeKey = (s) => (s.shopeeOrderId || '') + '|' + (s._variationName || '') + '|' + (s._skuRef || '');
       const existingIds = new Set(sales.map(makeKey).filter(k => k !== '||'));
 
-      // ── Baixa automática: suporte pra detectar se este arquivo é o relatório "A Enviar"
-      // (só ele tem a coluna de data-limite de envio preenchida) e quais pedidos aparecem nele.
-      let hasShipDeadlineCol = false;
-      const importedOrderIds = new Set();
+      // Baixa automática (ver mais abaixo) — conta quantos pedidos existentes foram
+      // marcados como produzido+postado porque o STATUS importado da Shopee (não a
+      // ausência num relatório) já indica que saíram do fluxo de envio.
+      let autoBaixaCount = 0;
 
       // Helpers de leitura (numérico e texto, tolerantes a acento)
       const numCol = (r, ...names) => {
@@ -7871,7 +7871,6 @@ function importShopee(event) {
 
       rows.forEach(row => {
         const orderId    = String(row['ID do pedido'] || '').trim();
-        if (orderId) importedOrderIds.add(orderId);
         const status     = String(row['Status do pedido'] || '').toLowerCase();
         const productName = String(row['Nome do Produto'] || '').trim();
         // Busca texto por coluna, tolerante a acento/maiúscula
@@ -7892,7 +7891,6 @@ function importShopee(event) {
         const qty        = parseInt(row['Quantidade']) || 1;
         const dateRaw    = textCol(row, 'Data de criação do pedido', 'Data de criacao do pedido');
         const shipDeadlineRaw = textCol(row, 'Data prevista de envio', 'Data prevista de envio (Data)', 'Estimated Ship Date');
-        if (shipDeadlineRaw) hasShipDeadlineCol = true;
         const recipientName = textCol(row, 'Nome do destinatário', 'Nome do destinatario');
         const buyerUsername = textCol(row, 'Nome de usuário (comprador)', 'Nome de usuario (comprador)');
         const skuRef     = textCol(row, 'Número de referência SKU', 'Numero de referencia SKU', 'SKU de referência', 'SKU de referencia', 'Nº de referência SKU');
@@ -7962,6 +7960,19 @@ function importShopee(event) {
               existingSale.shopeeStatus = newStatus;
               statusUpdated++;
             }
+            // Baixa automática pelo status REAL informado pela Shopee nesta importação
+            // (não por um pedido simplesmente não aparecer em algum relatório — isso é frágil
+            // porque relatórios podem vir filtrados por período ou paginados). Se o status diz
+            // que o pedido já saiu do fluxo de envio (despachado/entregue/etc), dá baixa igual
+            // ao botão manual "Dar baixa".
+            if (newStatus && !existingSale.readyToPost) {
+              const stLower = newStatus.toLowerCase();
+              if (SHIPPED_STATUSES.some(x => stLower.includes(x))) {
+                existingSale.produced = true;
+                existingSale.readyToPost = true;
+                autoBaixaCount++;
+              }
+            }
             if (shipDeadlineDate && !existingSale.shipDeadlineDate) {
               existingSale.shipDeadlineDate = shipDeadlineDate;
               existingSale.shipDeadlineTime = shipDeadlineTime;
@@ -8027,28 +8038,6 @@ function importShopee(event) {
         imported++;
       });
 
-      // ── Baixa automática: o relatório "A Enviar" só lista pedidos que ainda precisam ser
-      // despachados. Se um pedido que estava pendente aqui não aparece mais nele, é porque a
-      // Shopee já tirou ele da fila de envio — provavelmente já foi despachado. Só roda quando
-      // o arquivo tem a coluna de data-limite de envio preenchida (sinal de que é o relatório
-      // certo), e sempre pede confirmação antes de aplicar.
-      let autoBaixaCount = 0;
-      if (hasShipDeadlineCol) {
-        const stillPending = sales.filter(s => isPendingShipment(s) && s.shopeeOrderId && !importedOrderIds.has(s.shopeeOrderId));
-        if (stillPending.length > 0) {
-          const preview = stillPending.slice(0, 8).map(s => {
-            const p = products.find(x => x.id === s.productId);
-            return `• ${p ? p.name : 'Produto removido'} — pedido ${s.shopeeOrderId}`;
-          }).join('\n');
-          const more = stillPending.length > 8 ? `\n... e mais ${stillPending.length - 8}` : '';
-          const confirmMsg = `${stillPending.length} pedido(s) que estavam pendentes de envio não aparecem mais neste relatório "A Enviar" — normalmente isso quer dizer que a Shopee já despachou eles.\n\nDar baixa automática (marcar como produzido e postado)?\n\n${preview}${more}`;
-          if (confirm(confirmMsg)) {
-            stillPending.forEach(s => { s.produced = true; s.readyToPost = true; s._autoBaixa = true; });
-            autoBaixaCount = stillPending.length;
-          }
-        }
-      }
-
       // Adiciona as novas vendas
       if (newSales.length > 0 || deadlineUpdated > 0 || statusUpdated > 0 || autoBaixaCount > 0) {
         sales = newSales.length > 0 ? [...sales, ...newSales] : sales;
@@ -8060,7 +8049,7 @@ function importShopee(event) {
       if (skipped > 0) msgText += ` ${skipped} ignorado(s) (cancelados, duplicados ou sem valor).`;
       if (deadlineUpdated > 0) msgText += ` ${deadlineUpdated} pedido(s) já existente(s) ganharam data-limite de envio.`;
       if (statusUpdated > 0) msgText += ` ${statusUpdated} pedido(s) tiveram o status atualizado (ex: despachado/entregue).`;
-      if (autoBaixaCount > 0) msgText += ` ${autoBaixaCount} pedido(s) receberam baixa automática (não apareciam mais no "A Enviar").`;
+      if (autoBaixaCount > 0) msgText += ` ${autoBaixaCount} pedido(s) receberam baixa automática (status da Shopee já indicava envio/entrega/cancelamento).`;
 
       msg.style.background = 'rgba(74,222,128,0.1)';
       msg.style.border = '1px solid rgba(74,222,128,0.25)';
