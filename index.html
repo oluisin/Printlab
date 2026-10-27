@@ -1058,7 +1058,6 @@
     <a onclick="navigate('home')" data-page="home">Início</a>
     <a onclick="navigate('dashboard')" data-page="dashboard">Dashboard</a>
     <a onclick="navigate('products')" data-page="products">Produtos</a>
-    <a onclick="navigate('spools')" data-page="spools">Carretéis</a>
     <a onclick="navigate('sales')" data-page="sales">Vendas</a>
     <a onclick="navigate('expenses')" data-page="expenses">Custos</a>
     <div style="position:relative">
@@ -1105,9 +1104,6 @@
         </button>
         <button class="nav-btn" onclick="navigate('products')">
           <i class="ti ti-package nb-icon" aria-hidden="true"></i> Produtos
-        </button>
-        <button class="nav-btn" onclick="navigate('spools')">
-          <i class="ti ti-disc nb-icon" aria-hidden="true"></i> Carretéis
         </button>
         <button class="nav-btn" onclick="navigate('sales')">
           <i class="ti ti-shopping-cart nb-icon" aria-hidden="true"></i> Vendas
@@ -1224,10 +1220,6 @@
 
     <div class="more-section-label">Produção</div>
     <div class="more-grid">
-      <button class="more-item" onclick="navMore('spools')">
-        <span class="more-icon"><i class="ti ti-circle-dot ic"></i></span>
-        <span class="more-label">Carretéis</span>
-      </button>
       <button class="more-item" onclick="navMore('production')">
         <span class="more-icon"><i class="ti ti-clipboard-list ic"></i></span>
         <span class="more-label">Fila de Produção</span>
@@ -2573,80 +2565,6 @@
   </div>
 
 
-  <!-- ══════════════ CARRETÉIS DE FILAMENTO ══════════════ -->
-  <div class="page" id="page-spools">
-    <div class="page-header">
-      <div>
-        <div class="page-title">Carretéis de Filamento</div>
-        <div class="page-sub" id="spools-sub">Controle de estoque por carretel</div>
-      </div>
-      <button class="btn-primary" onclick="openSpoolModal()">+ Novo Carretel</button>
-    </div>
-
-    <!-- Summary cards -->
-    <div class="summary-grid" style="grid-template-columns:repeat(3,1fr);margin-bottom:24px">
-      <div class="summary-card"><div class="summary-label">Carretéis Ativos</div><div class="summary-value" id="spools-active" style="color:var(--accent2)">—</div></div>
-      <div class="summary-card"><div class="summary-label">Peso Total Restante</div><div class="summary-value" id="spools-total-weight" style="color:var(--green)">—</div></div>
-      <div class="summary-card"><div class="summary-label"><i class="ti ti-alert-triangle ic"></i> Estoque Baixo</div><div class="summary-value" id="spools-low-count" style="color:#f87171">—</div></div>
-    </div>
-
-    <div id="spools-list"></div>
-  </div>
-
-<!-- MODAL — Novo/Editar Carretel -->
-<div class="modal-overlay" id="spool-modal">
-  <div class="modal" style="max-width:460px">
-    <div class="modal-header">
-      <div class="modal-title" id="spool-modal-title">Novo Carretel</div>
-      <button class="modal-close" onclick="closeSpoolModal()">×</button>
-    </div>
-
-    <div class="field">
-      <label>Tipo de Filamento</label>
-      <select id="spool-type"></select>
-    </div>
-
-    <div class="field">
-      <label>Cor</label>
-      <div style="display:flex;gap:8px;align-items:center">
-        <input type="color" id="spool-color-picker" value="#3b82f6" style="width:44px;height:38px;padding:2px;cursor:pointer;flex-shrink:0" onchange="document.getElementById('spool-color-name').focus()" />
-        <input type="text" id="spool-color-name" placeholder="Ex: Preto, Colorido, Vermelho" style="flex:1" />
-      </div>
-    </div>
-
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-      <div class="field">
-        <label>Peso Total (g)</label>
-        <input id="spool-total-grams" type="number" step="1" placeholder="1000" oninput="updateSpoolPricePreview()" />
-      </div>
-      <div class="field">
-        <label>Peso Restante (g)</label>
-        <input id="spool-remaining-grams" type="number" step="1" placeholder="1000" />
-      </div>
-    </div>
-
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-      <div class="field">
-        <label>Preço Pago (opcional)</label>
-        <input id="spool-price-paid" type="number" step="0.01" placeholder="Auto" />
-      </div>
-      <div class="field">
-        <label>Alerta de Estoque Baixo (g)</label>
-        <input id="spool-low-threshold" type="number" step="1" placeholder="100" value="100" />
-      </div>
-    </div>
-
-    <div class="field">
-      <label>Data da Compra</label>
-      <input id="spool-purchase-date" type="date" />
-    </div>
-
-    <div id="spool-price-hint" style="font-size:12px;color:var(--text3);margin-bottom:14px"></div>
-
-    <button class="btn-primary" onclick="saveSpool()" style="width:100%;justify-content:center">Salvar Carretel</button>
-  </div>
-</div>
-
 
 </main>
 
@@ -2659,7 +2577,7 @@
     </div>
     <div class="field">
       <label>Descrição</label>
-      <input id="e-desc" placeholder="Ex: Carretel PLA Branco 1kg — Creality" />
+      <input id="e-desc" placeholder="Ex: Filamento PLA Branco 1kg — Creality" />
     </div>
     <div class="grid-2">
       <div class="field">
@@ -3055,7 +2973,6 @@ let priceHistory   = loadLocal('pl_price_history',   []);
 let recurringCosts = loadLocal('pl_recurring_costs', []);
 let wasteRate     = loadLocal('pl_waste_rate',     { enabled: false, percent: 10 });
 let lastAutoLaunch = loadLocal('pl_last_auto_launch', '');
-let spools         = loadLocal('pl_spools', []);
 let shopeeFeeTiers = loadLocal('pl_shopee_fee_tiers', DEFAULT_SHOPEE_FEE_TIERS);
 let products  = loadLocal('pl_products',  DEFAULT_PRODUCTS);
 let sales     = loadLocal('pl_sales',     DEFAULT_SALES);
@@ -3101,7 +3018,7 @@ async function pushToFirebase() {
   if (!window._db) return;
   try {
     await window._setDoc(window._doc(window._db, 'store', 'data'), {
-      filaments, packaging, marginAlerts, monthlyGoal, recurringCosts, priceHistory, wasteRate, spools, products, sales, expenses, shopeeFeeTiers,
+      filaments, packaging, marginAlerts, monthlyGoal, recurringCosts, priceHistory, wasteRate, products, sales, expenses, shopeeFeeTiers,
       updatedAt: new Date().toISOString()
     });
     showSyncStatus('<i class="ti ti-circle-check ic"></i> Sincronizado', 'var(--green)');
@@ -3125,13 +3042,12 @@ async function pullFromFirebase() {
       expenses       = data.expenses       || [];
       // Esses campos eram só gravados no Firebase, nunca lidos de volta — então um segundo
       // dispositivo (ex: celular da sua esposa) nunca via custos recorrentes, taxas por faixa,
-      // meta mensal, taxa de perda, alertas de margem, histórico de preço ou bobinas.
+      // meta mensal, taxa de perda, alertas de margem ou histórico de preço.
       marginAlerts   = data.marginAlerts   || marginAlerts;
       monthlyGoal    = data.monthlyGoal    || monthlyGoal;
       recurringCosts = data.recurringCosts || recurringCosts;
       priceHistory   = data.priceHistory   || priceHistory;
       wasteRate      = data.wasteRate      || wasteRate;
-      spools         = data.spools         || spools;
       shopeeFeeTiers = data.shopeeFeeTiers || shopeeFeeTiers;
       saveLocal('pl_filaments',        filaments);
       saveLocal('pl_packaging',        packaging);
@@ -3143,7 +3059,6 @@ async function pullFromFirebase() {
       saveLocal('pl_recurring_costs',  recurringCosts);
       saveLocal('pl_price_history',    priceHistory);
       saveLocal('pl_waste_rate',       wasteRate);
-      saveLocal('pl_spools',           spools);
       saveLocal('pl_shopee_fee_tiers', shopeeFeeTiers);
       // Reaplica o DAS do MEI caso o estado vindo do Firebase ainda não o tenha
       // (ex: primeiro carregamento no celular da sua esposa).
@@ -3255,50 +3170,6 @@ function getVariationGrams(p, variationName) {
 }
 
 
-// ══════════════════════════════════════════
-//  CARRETÉIS — CONSUMO E DEDUÇÃO DE ESTOQUE
-// ══════════════════════════════════════════
-
-// Retorna o consumo real de filamento desta venda, por tipo de filamento,
-// já considerando o peso alternativo da variação (se houver).
-function getEffectivePartGrams(product, overrideGrams) {
-  const parts = product.parts || [];
-  if (!parts.length) return [];
-  const baseGrams = parts.reduce((s, p) => s + (p.grams || 0) * (p.qty || 1), 0);
-  if (overrideGrams && overrideGrams > 0 && baseGrams > 0) {
-    const ratio = overrideGrams / baseGrams;
-    return parts.map(p => ({ filamentType: p.filamentType, grams: (p.grams || 0) * (p.qty || 1) * ratio }));
-  }
-  return parts.map(p => ({ filamentType: p.filamentType, grams: (p.grams || 0) * (p.qty || 1) }));
-}
-
-// Desconta o consumo de filamento dos carretéis cadastrados (FIFO — usa o
-// carretel mais antigo primeiro). Se não houver carretel suficiente
-// cadastrado daquele tipo, apenas desconta o que existir (nunca fica negativo).
-function deductFilamentFromSpools(product, overrideGrams, qty) {
-  if (!product || !spools || spools.length === 0) return;
-  qty = qty || 1;
-  const consumption = getEffectivePartGrams(product, overrideGrams);
-  let changed = false;
-
-  consumption.forEach(part => {
-    let needed = part.grams * qty;
-    if (needed <= 0 || !part.filamentType) return;
-    const candidates = spools
-      .filter(s => s.filamentType === part.filamentType && s.remainingGrams > 0)
-      .sort((a, b) => (a.purchaseDate || '').localeCompare(b.purchaseDate || ''));
-    for (const spool of candidates) {
-      if (needed <= 0) break;
-      const take = Math.min(spool.remainingGrams, needed);
-      spool.remainingGrams = +(spool.remainingGrams - take).toFixed(2);
-      needed -= take;
-      changed = true;
-    }
-  });
-
-  if (changed) save('pl_spools', spools);
-}
-
 // Ponto único de criação de venda — usado tanto pelo formulário manual
 // quanto pelo registro rápido (FAB mobile). Corrige um bug pré-existente
 // onde addSale() era chamado pelo FAB mas nunca havia sido definido.
@@ -3313,13 +3184,6 @@ function addSale(saleData) {
   };
   sales.push(sale);
   save('pl_sales', sales);
-
-  // Desconta o filamento consumido dos carretéis (produção em tempo real)
-  const product = products.find(p => p.id === sale.productId);
-  if (product) {
-    const overrideGrams = getVariationGrams(product, sale.variationName);
-    deductFilamentFromSpools(product, overrideGrams, sale.qty);
-  }
   return sale;
 }
 
@@ -4027,7 +3891,7 @@ function navigate(page) {
 
   // Expand sidebar group containing this page
   const pageGroups = {
-    home: 'ng-principal', dashboard: 'ng-principal', products: 'ng-principal', spools: 'ng-principal', sales: 'ng-principal', production: 'ng-principal',
+    home: 'ng-principal', dashboard: 'ng-principal', products: 'ng-principal', sales: 'ng-principal', production: 'ng-principal',
     deadlines: 'ng-principal',
     expenses: 'ng-financeiro', breakeven: 'ng-financeiro',
     ranking: 'ng-analises', seasonality: 'ng-analises', hours: 'ng-analises', analysis: 'ng-analises', pricehistory: 'ng-analises', projection: 'ng-analises', calendar: 'ng-analises', score: 'ng-analises',
@@ -4044,7 +3908,6 @@ function navigate(page) {
   if (page === 'home')      renderHome();
   if (page === 'dashboard') renderDashboard();
   if (page === 'products')  renderProducts();
-  if (page === 'spools')    renderSpools();
   if (page === 'sales')     renderSales();
   if (page === 'production') renderProductionQueue();
   if (page === 'deadlines') renderDeadlines();
@@ -4340,180 +4203,6 @@ function renderDashboard() {
 // ══════════════════════════════════════════
 //  PRODUCTS
 // ══════════════════════════════════════════
-
-// ══════════════════════════════════════════
-//  CARRETÉIS — INTERFACE
-// ══════════════════════════════════════════
-let _editingSpoolId = null;
-
-function renderSpools() {
-  document.getElementById('spools-sub').textContent = spools.length + ' carretel(is) cadastrado(s)';
-
-  const active   = spools.filter(s => s.remainingGrams > 0);
-  const totalW   = spools.reduce((s, x) => s + (x.remainingGrams || 0), 0);
-  const lowStock = spools.filter(s => s.remainingGrams > 0 && s.remainingGrams <= (s.lowThreshold || 100));
-
-  document.getElementById('spools-active').textContent      = active.length;
-  document.getElementById('spools-total-weight').textContent = (totalW / 1000).toFixed(2) + ' kg';
-  document.getElementById('spools-low-count').textContent   = lowStock.length;
-
-  const listEl = document.getElementById('spools-list');
-
-  if (spools.length === 0) {
-    listEl.innerHTML = emptyStateHTML({
-      icon: '<i class="ti ti-circle-dot ic"></i>', title: 'Nenhum carretel cadastrado',
-      desc: 'Cadastre os carretéis de filamento que você tem disponível para acompanhar o estoque real por cor.',
-      ctaText: '+ Novo Carretel', ctaAction: 'openSpoolModal()'
-    });
-    return;
-  }
-
-  // Ordena: estoque baixo/vazio primeiro (chama mais atenção), depois por peso restante
-  const sorted = [...spools].sort((a, b) => {
-    const aLow = a.remainingGrams <= (a.lowThreshold || 100);
-    const bLow = b.remainingGrams <= (b.lowThreshold || 100);
-    if (aLow !== bLow) return aLow ? -1 : 1;
-    return (b.remainingGrams || 0) - (a.remainingGrams || 0);
-  });
-
-  listEl.innerHTML = sorted.map(s => {
-    const fil = getFilament(s.filamentType);
-    const pct = s.totalGrams > 0 ? Math.min(100, (s.remainingGrams / s.totalGrams) * 100) : 0;
-    const isEmpty = s.remainingGrams <= 0;
-    const isLow   = !isEmpty && s.remainingGrams <= (s.lowThreshold || 100);
-    const barColor = isEmpty ? '#6e6a88' : isLow ? '#f87171' : '#4ade80';
-    const statusBadge = isEmpty
-      ? `<span style="font-size:10px;color:#6e6a88;background:var(--bg3);padding:2px 8px;border-radius:20px">Vazio</span>`
-      : isLow
-        ? `<span style="font-size:10px;color:#f87171;background:rgba(239,68,68,0.1);padding:2px 8px;border-radius:20px"><i class="ti ti-alert-triangle ic"></i> Estoque baixo</span>`
-        : '';
-
-    return `<div class="card" style="padding:16px 18px;margin-bottom:10px;display:flex;align-items:center;gap:14px">
-      <div style="width:32px;height:32px;border-radius:50%;background:${s.color || '#3b82f6'};border:2px solid var(--border);flex-shrink:0"></div>
-      <div style="flex:1;min-width:0">
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;flex-wrap:wrap">
-          <span style="font-weight:600;font-size:14px">${s.colorName || 'Sem nome'}</span>
-          <span style="font-size:11px;color:var(--text3)">· ${fil.name}</span>
-          ${statusBadge}
-        </div>
-        <div style="height:6px;background:var(--bg3);border-radius:3px;overflow:hidden;margin-bottom:6px">
-          <div style="height:100%;width:${pct}%;background:${barColor};border-radius:3px;transition:width 0.3s"></div>
-        </div>
-        <div style="font-size:12px;color:var(--text2)">${s.remainingGrams.toFixed(0)}g de ${s.totalGrams.toFixed(0)}g restantes</div>
-      </div>
-      <div style="display:flex;flex-direction:column;gap:6px;flex-shrink:0">
-        <button onclick="adjustSpool('${s.id}')" style="font-size:11px;padding:5px 10px;border-radius:6px;border:0.5px solid var(--border);background:transparent;color:var(--text2);cursor:pointer"><i class="ti ti-scale ic"></i> Ajustar</button>
-        <button onclick="editSpool('${s.id}')" style="font-size:11px;padding:5px 10px;border-radius:6px;border:0.5px solid var(--border);background:transparent;color:var(--text2);cursor:pointer"><i class="ti ti-pencil ic"></i> Editar</button>
-      </div>
-    </div>`;
-  }).join('');
-}
-
-function openSpoolModal() {
-  _editingSpoolId = null;
-  document.getElementById('spool-modal-title').textContent = 'Novo Carretel';
-  const typeSel = document.getElementById('spool-type');
-  typeSel.innerHTML = filaments.map(f => `<option value="${f.id}">${f.name}</option>`).join('');
-  document.getElementById('spool-color-picker').value = '#3b82f6';
-  document.getElementById('spool-color-name').value = '';
-  document.getElementById('spool-total-grams').value = '1000';
-  document.getElementById('spool-remaining-grams').value = '1000';
-  document.getElementById('spool-price-paid').value = '';
-  document.getElementById('spool-low-threshold').value = '100';
-  document.getElementById('spool-purchase-date').value = localDateStr();
-  updateSpoolPricePreview();
-  document.getElementById('spool-modal').classList.add('open');
-}
-
-function editSpool(id) {
-  const s = spools.find(x => x.id === id);
-  if (!s) return;
-  _editingSpoolId = id;
-  document.getElementById('spool-modal-title').textContent = 'Editar Carretel';
-  const typeSel = document.getElementById('spool-type');
-  typeSel.innerHTML = filaments.map(f => `<option value="${f.id}"${f.id===s.filamentType?' selected':''}>${f.name}</option>`).join('');
-  document.getElementById('spool-color-picker').value = s.color || '#3b82f6';
-  document.getElementById('spool-color-name').value = s.colorName || '';
-  document.getElementById('spool-total-grams').value = s.totalGrams;
-  document.getElementById('spool-remaining-grams').value = s.remainingGrams;
-  document.getElementById('spool-price-paid').value = s.pricePaid || '';
-  document.getElementById('spool-low-threshold').value = s.lowThreshold || 100;
-  document.getElementById('spool-purchase-date').value = s.purchaseDate || localDateStr();
-  updateSpoolPricePreview();
-  document.getElementById('spool-modal').classList.add('open');
-}
-
-function closeSpoolModal() {
-  document.getElementById('spool-modal').classList.remove('open');
-}
-
-function updateSpoolPricePreview() {
-  const typeId = document.getElementById('spool-type').value;
-  const grams  = parseFloat(document.getElementById('spool-total-grams').value) || 0;
-  const fil    = getFilament(typeId);
-  const hint   = document.getElementById('spool-price-hint');
-  if (fil && grams > 0) {
-    const estCost = (grams / 1000) * fil.pricePerKg;
-    hint.innerHTML = `<i class="ti ti-bulb ic"></i> Se não informar o preço pago, será estimado em ${fmt(estCost)} (${fil.pricePerKg}/kg × ${grams}g)`;
-  } else {
-    hint.textContent = '';
-  }
-}
-
-function saveSpool() {
-  const filamentType = document.getElementById('spool-type').value;
-  const color         = document.getElementById('spool-color-picker').value;
-  const colorName      = document.getElementById('spool-color-name').value.trim();
-  const totalGrams     = parseFloat(document.getElementById('spool-total-grams').value);
-  const remainingGrams = parseFloat(document.getElementById('spool-remaining-grams').value);
-  const priceInput     = document.getElementById('spool-price-paid').value;
-  const lowThreshold   = parseFloat(document.getElementById('spool-low-threshold').value) || 100;
-  const purchaseDate   = document.getElementById('spool-purchase-date').value || localDateStr();
-
-  if (!colorName || isNaN(totalGrams) || totalGrams <= 0 || isNaN(remainingGrams) || remainingGrams < 0) {
-    alert('Preencha a cor, o peso total e o peso restante corretamente.');
-    return;
-  }
-
-  const fil = getFilament(filamentType);
-  const pricePaid = priceInput ? parseFloat(priceInput) : (totalGrams / 1000) * fil.pricePerKg;
-
-  if (_editingSpoolId) {
-    const s = spools.find(x => x.id === _editingSpoolId);
-    if (s) {
-      s.filamentType   = filamentType;
-      s.color          = color;
-      s.colorName      = colorName;
-      s.totalGrams     = totalGrams;
-      s.remainingGrams = remainingGrams;
-      s.pricePaid      = pricePaid;
-      s.lowThreshold   = lowThreshold;
-      s.purchaseDate   = purchaseDate;
-    }
-  } else {
-    spools.push({
-      id: Date.now().toString() + Math.random().toString(36).slice(2,6),
-      filamentType, color, colorName, totalGrams, remainingGrams,
-      pricePaid, lowThreshold, purchaseDate,
-    });
-  }
-
-  save('pl_spools', spools);
-  closeSpoolModal();
-  renderSpools();
-}
-
-function adjustSpool(id) {
-  const s = spools.find(x => x.id === id);
-  if (!s) return;
-  const input = prompt(`Peso restante atual de "${s.colorName}" (g):`, s.remainingGrams);
-  if (input === null) return;
-  const val = parseFloat(input);
-  if (isNaN(val) || val < 0) { alert('Valor inválido.'); return; }
-  s.remainingGrams = Math.min(val, s.totalGrams);
-  save('pl_spools', spools);
-  renderSpools();
-}
 
 function renderProducts() {
   document.getElementById('products-sub').textContent = products.length + ' produto' + (products.length !== 1 ? 's' : '') + ' cadastrado' + (products.length !== 1 ? 's' : '');
@@ -5957,14 +5646,6 @@ function renderHome() {
     alertItems.push({ color: 'var(--yellow)', bg: 'rgba(251,191,36,0.08)', icon: '<i class="ti ti-repeat ic"></i>',
       text: `${recurringCosts.length} custo(s) fixo(s) pendente(s) para ${curM}`,
       action: () => navigate('settings') });
-  }
-
-  // Carretéis com estoque baixo
-  const lowSpools = spools.filter(s => s.remainingGrams > 0 && s.remainingGrams <= (s.lowThreshold || 100));
-  if (lowSpools.length > 0) {
-    alertItems.push({ color: '#f87171', bg: 'rgba(239,68,68,0.08)', icon: '<i class="ti ti-circle-dot ic"></i>',
-      text: `${lowSpools.length} carretel(is) com estoque baixo`,
-      action: () => navigate('spools') });
   }
 
   // Vendas pendentes de produção
@@ -7605,7 +7286,6 @@ function exportData() {
     recurringCosts,
     priceHistory,
     wasteRate,
-    spools,
     products,
     sales,
     expenses,
@@ -7634,7 +7314,6 @@ function importData(event) {
       filaments      = data.filaments      || DEFAULT_FILAMENTS;
       products       = data.products;
       sales          = data.sales;
-      spools         = data.spools         || [];
       packaging      = data.packaging      || packaging;
       marginAlerts   = data.marginAlerts   || marginAlerts;
       monthlyGoal    = data.monthlyGoal    || monthlyGoal;
@@ -7645,7 +7324,6 @@ function importData(event) {
       save('pl_filaments',        filaments);
       save('pl_products',         products);
       save('pl_sales',            sales);
-      save('pl_spools',           spools);
       save('pl_packaging',        packaging);
       save('pl_margin_alerts',    marginAlerts);
       save('pl_monthly_goal',     monthlyGoal);
