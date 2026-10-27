@@ -584,6 +584,11 @@
     .settings-card { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--r); padding: 24px; margin-bottom: 20px; }
     .settings-title { font-family: 'Space Grotesk', sans-serif; font-weight: 700; font-size: 16px; margin-bottom: 16px; }
     .preset-row { display: grid; grid-template-columns: 1fr 1fr auto; gap: 12px; align-items: center; margin-bottom: 10px; }
+    .shopee-tier-row { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; align-items: end; margin-bottom: 14px; padding-bottom: 14px; border-bottom: 1px solid var(--border); }
+    .shopee-tier-row .st-field { display: flex; flex-direction: column; gap: 4px; }
+    .shopee-tier-row .st-field label { font-size: 10px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.04em; }
+    .shopee-tier-row .st-field input { background: var(--bg3); border: 1px solid var(--border); border-radius: 6px; padding: 8px 10px; color: var(--text); font-size: 13px; width: 100%; }
+    .shopee-tier-row .st-remove { grid-column: 1 / -1; justify-self: end; }
     .home-banner {
       position: relative; width: 100%; height: 150px;
       border-radius: 16px; overflow: hidden; margin-bottom: 22px;
@@ -994,7 +999,6 @@
       .settings-title { font-size: 14px; }
       .preset-row { grid-template-columns: 1fr auto; }
       .preset-row input:first-child { grid-column: 1 / -1; }
-      #shopee-fees-grid { grid-template-columns: repeat(2,1fr) !important; }
 
       /* Ranking tabs */
       .rank-tab { padding: 5px 10px; font-size: 12px; }
@@ -1698,31 +1702,18 @@
     </div>
 
     <div class="settings-card">
-      <div class="settings-title">Taxas da Shopee</div>
-      <div id="shopee-fees-grid" style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px">
-        <div style="background:var(--bg3);border-radius:8px;padding:14px 16px">
-          <div style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:6px">Comissão</div>
-          <div style="font-family:'Syne',sans-serif;font-size:22px;font-weight:700;color:var(--accent2)">18%</div>
-          <div style="font-size:11px;color:var(--text3);margin-top:2px">sobre o preço</div>
-        </div>
-        <div style="background:var(--bg3);border-radius:8px;padding:14px 16px">
-          <div style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:6px">Transação</div>
-          <div style="font-family:'Syne',sans-serif;font-size:22px;font-weight:700;color:var(--accent2)">2%</div>
-          <div style="font-size:11px;color:var(--text3);margin-top:2px">sobre o preço</div>
-        </div>
-        <div style="background:var(--bg3);border-radius:8px;padding:14px 16px">
-          <div style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:6px">Taxa por Item</div>
-          <div style="font-family:'Syne',sans-serif;font-size:22px;font-weight:700;color:var(--accent2)">R$4,00</div>
-          <div style="font-size:11px;color:var(--text3);margin-top:2px">fixo por pedido</div>
-        </div>
-        <div style="background:var(--bg3);border-radius:8px;padding:14px 16px">
-          <div style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:6px">Devolução Fácil</div>
-          <div style="font-family:'Syne',sans-serif;font-size:22px;font-weight:700;color:var(--accent2)">R$0,49</div>
-          <div style="font-size:11px;color:var(--text3);margin-top:2px">fixo por pedido</div>
-        </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+        <div class="settings-title" style="margin:0">Taxas da Shopee por Faixa de Preço</div>
+        <button class="btn-ghost" style="font-size:13px;padding:7px 14px" onclick="addShopeeFeeTierRow()">+ Adicionar faixa</button>
       </div>
-      <div style="margin-top:12px;font-size:12px;color:var(--text3)">
-        Baseado nos pedidos reais da loja. Total médio de taxas: ~R$ 4,49 + 20% do preço de venda.
+      <div style="font-size:13px;color:var(--text2);margin-bottom:16px;line-height:1.6">
+        A Shopee cobra comissão e taxas diferentes dependendo do preço do item, e os valores mudam com frequência.
+        Confira os valores atuais no painel da Shopee (Central do Vendedor → Taxas) e cadastre as faixas aqui.
+        Um produto com taxa própria definida na tela de Produtos sempre ignora esta tabela.
+      </div>
+      <div id="shopee-tiers-list"></div>
+      <div style="display:flex;justify-content:flex-end;margin-top:6px">
+        <button class="btn-primary" id="save-shopee-tiers-btn" onclick="saveShopeeFeeTiers()"><i class="ti ti-device-floppy ic"></i> Salvar Taxas</button>
       </div>
     </div>
 
@@ -2994,6 +2985,13 @@ const SHOPEE_TRANSACTION = 0.02;  // 2% taxa de transação
 const SHOPEE_ITEM_FEE    = 4.00;  // R$ 4,00 fixo por item
 const SHOPEE_DEVOL_FEE   = 0.49;  // R$ 0,49 Devolução Fácil Shopee
 
+// Tabela de taxas da Shopee por faixa de preço — substitui as constantes fixas acima.
+// Seed com uma única faixa (0 a sem-limite) usando os mesmos valores das constantes,
+// pra não mudar nenhum cálculo até você editar/adicionar faixas reais em Configurações.
+const DEFAULT_SHOPEE_FEE_TIERS = [
+  { id: 'tier-default', min: 0, max: null, commission: 18, transaction: 2, itemFee: 4.00, devolFee: 0.49 },
+];
+
 const DEFAULT_FILAMENTS = [
   { id: 'pla-basic',   name: 'PLA Básico',   pricePerKg: 80  },
   { id: 'pla-premium', name: 'PLA Premium',  pricePerKg: 120 },
@@ -3058,6 +3056,7 @@ let recurringCosts = loadLocal('pl_recurring_costs', []);
 let wasteRate     = loadLocal('pl_waste_rate',     { enabled: false, percent: 10 });
 let lastAutoLaunch = loadLocal('pl_last_auto_launch', '');
 let spools         = loadLocal('pl_spools', []);
+let shopeeFeeTiers = loadLocal('pl_shopee_fee_tiers', DEFAULT_SHOPEE_FEE_TIERS);
 let products  = loadLocal('pl_products',  DEFAULT_PRODUCTS);
 let sales     = loadLocal('pl_sales',     DEFAULT_SALES);
 let expenses  = loadLocal('pl_expenses',  []);
@@ -3076,6 +3075,23 @@ function save(key, val) {
   scheduleFbSync();
 }
 
+// ensureRecurringCost: garante que um custo fixo recorrente específico existe, sem duplicar
+// e sem apagar os outros que você já cadastrou. Casa pela descrição (sem diferenciar maiúsculas).
+function ensureRecurringCost(desc, value, category) {
+  const exists = recurringCosts.some(r => (r.desc || '').trim().toLowerCase() === desc.toLowerCase());
+  if (exists) return false;
+  recurringCosts.push({ desc, value, category });
+  save('pl_recurring_costs', recurringCosts);
+  return true;
+}
+
+// DAS do MEI — custo fixo mensal obrigatório (SIMEI). Valor de referência: R$ 82,05/mês.
+// Reajusta todo ano (o teto do Simples/MEI muda) — confira o boleto do PGMEI se o valor divergir.
+function ensureDasCost() {
+  ensureRecurringCost('DAS - MEI', 82.05, 'Outros');
+}
+ensureDasCost();
+
 function scheduleFbSync() {
   clearTimeout(_syncTimeout);
   _syncTimeout = setTimeout(pushToFirebase, 800);
@@ -3085,7 +3101,7 @@ async function pushToFirebase() {
   if (!window._db) return;
   try {
     await window._setDoc(window._doc(window._db, 'store', 'data'), {
-      filaments, packaging, marginAlerts, monthlyGoal, recurringCosts, priceHistory, wasteRate, spools, products, sales, expenses,
+      filaments, packaging, marginAlerts, monthlyGoal, recurringCosts, priceHistory, wasteRate, spools, products, sales, expenses, shopeeFeeTiers,
       updatedAt: new Date().toISOString()
     });
     showSyncStatus('<i class="ti ti-circle-check ic"></i> Sincronizado', 'var(--green)');
@@ -3102,16 +3118,36 @@ async function pullFromFirebase() {
     const snap = await window._getDoc(window._doc(window._db, 'store', 'data'));
     if (snap.exists()) {
       const data = snap.data();
-      filaments = data.filaments || DEFAULT_FILAMENTS;
-      packaging = data.packaging || DEFAULT_PACKAGING;
-      products  = data.products  || DEFAULT_PRODUCTS;
-      sales     = data.sales     || DEFAULT_SALES;
-      expenses  = data.expenses  || [];
-      saveLocal('pl_filaments', filaments);
-      saveLocal('pl_packaging', packaging);
-      saveLocal('pl_products',  products);
-      saveLocal('pl_sales',     sales);
-      saveLocal('pl_expenses',  expenses);
+      filaments      = data.filaments      || DEFAULT_FILAMENTS;
+      packaging      = data.packaging      || DEFAULT_PACKAGING;
+      products       = data.products       || DEFAULT_PRODUCTS;
+      sales          = data.sales          || DEFAULT_SALES;
+      expenses       = data.expenses       || [];
+      // Esses campos eram só gravados no Firebase, nunca lidos de volta — então um segundo
+      // dispositivo (ex: celular da sua esposa) nunca via custos recorrentes, taxas por faixa,
+      // meta mensal, taxa de perda, alertas de margem, histórico de preço ou bobinas.
+      marginAlerts   = data.marginAlerts   || marginAlerts;
+      monthlyGoal    = data.monthlyGoal    || monthlyGoal;
+      recurringCosts = data.recurringCosts || recurringCosts;
+      priceHistory   = data.priceHistory   || priceHistory;
+      wasteRate      = data.wasteRate      || wasteRate;
+      spools         = data.spools         || spools;
+      shopeeFeeTiers = data.shopeeFeeTiers || shopeeFeeTiers;
+      saveLocal('pl_filaments',        filaments);
+      saveLocal('pl_packaging',        packaging);
+      saveLocal('pl_products',         products);
+      saveLocal('pl_sales',            sales);
+      saveLocal('pl_expenses',         expenses);
+      saveLocal('pl_margin_alerts',    marginAlerts);
+      saveLocal('pl_monthly_goal',     monthlyGoal);
+      saveLocal('pl_recurring_costs',  recurringCosts);
+      saveLocal('pl_price_history',    priceHistory);
+      saveLocal('pl_waste_rate',       wasteRate);
+      saveLocal('pl_spools',           spools);
+      saveLocal('pl_shopee_fee_tiers', shopeeFeeTiers);
+      // Reaplica o DAS do MEI caso o estado vindo do Firebase ainda não o tenha
+      // (ex: primeiro carregamento no celular da sua esposa).
+      ensureDasCost();
       // Re-render current page (only after Chart.js is ready)
       const activePage = document.querySelector('.page.active');
       if (activePage) {
@@ -3166,13 +3202,24 @@ if (window._firebaseReady) pullFromFirebase();
 // ══════════════════════════════════════════
 function getFilament(id) { return filaments.find(f => f.id === id) || filaments[0]; }
 
-// getProductFees: retorna as taxas da Shopee do produto (próprias ou globais)
-function getProductFees(p) {
+// getFeeTierForPrice: acha a faixa de preço cadastrada que cobre esse valor.
+// Sem faixa cadastrada ou preço fora de todas → usa a faixa de maior "min" (a mais alta).
+function getFeeTierForPrice(price) {
+  if (!shopeeFeeTiers || shopeeFeeTiers.length === 0) return null;
+  const sorted = [...shopeeFeeTiers].sort((a, b) => a.min - b.min);
+  const price_ = price || 0;
+  return sorted.find(t => price_ >= t.min && (t.max == null || price_ <= t.max)) || sorted[sorted.length - 1];
+}
+
+// getProductFees: retorna as taxas da Shopee do produto — prioridade: taxa própria do
+// produto (feeCommission etc, cadastrada manualmente) → faixa de preço da tabela → constante fixa antiga.
+function getProductFees(p, price) {
+  const tier = getFeeTierForPrice(price != null ? price : (p && p.price) || 0) || {};
   return {
-    commission:  p && p.feeCommission  != null ? p.feeCommission / 100  : SHOPEE_COMMISSION,
-    transaction: p && p.feeTransaction != null ? p.feeTransaction / 100 : SHOPEE_TRANSACTION,
-    itemFee:     p && p.feeItem        != null ? p.feeItem               : SHOPEE_ITEM_FEE,
-    devolFee:    p && p.feeDevol       != null ? p.feeDevol              : SHOPEE_DEVOL_FEE,
+    commission:  p && p.feeCommission  != null ? p.feeCommission / 100  : (tier.commission  != null ? tier.commission  / 100 : SHOPEE_COMMISSION),
+    transaction: p && p.feeTransaction != null ? p.feeTransaction / 100 : (tier.transaction != null ? tier.transaction / 100 : SHOPEE_TRANSACTION),
+    itemFee:     p && p.feeItem        != null ? p.feeItem               : (tier.itemFee    != null ? tier.itemFee            : SHOPEE_ITEM_FEE),
+    devolFee:    p && p.feeDevol       != null ? p.feeDevol              : (tier.devolFee   != null ? tier.devolFee           : SHOPEE_DEVOL_FEE),
   };
 }
 
@@ -3701,7 +3748,7 @@ function calcCost(p, price, qty, overrideGrams) {
   qty = qty || 1;
   const wm          = getWasteMultiplier();
   const filC        = calcFilamentCost(p, overrideGrams);
-  const fees        = getProductFees(p);
+  const fees        = getProductFees(p, price);
   const baseProd    = filC + p.paintCost + p.packagingCost;
   const wasteCost   = baseProd * (wm - 1); // custo extra por causa das perdas
   const prodWithWaste = baseProd * wm;
@@ -3810,7 +3857,7 @@ function calcProfitTotal(p, price, qty, shopeeIncome, overrideGrams) {
   const prodCost     = prodCostBase * wm;
   const wasteCost    = prodCostBase * (wm - 1);
   const totalRevenue = price * qty;
-  const fees         = getProductFees(p);
+  const fees         = getProductFees(p, price);
 
   let totalFees, totalCosts, totalProfit;
 
@@ -4597,6 +4644,8 @@ function saveProduct() {
   const price = parseFloat(document.getElementById('p-price').value);
   if (!name || isNaN(price)) { alert('Preencha nome e preço.'); return; }
   if (currentParts.every(p => !p.grams || p.grams <= 0)) { alert('Adicione ao menos uma parte com peso.'); return; }
+  const pkgIdCheck = document.getElementById('p-pkg-select')?.value || '';
+  if (!pkgIdCheck) { alert('Selecione a embalagem do produto antes de salvar.'); return; }
 
   const data = {
     name,
@@ -4691,7 +4740,7 @@ function updateSim() {
     feeTransaction: document.getElementById('p-fee-transaction')?.value !== '' ? parseFloat(document.getElementById('p-fee-transaction')?.value) : null,
     feeItem:        document.getElementById('p-fee-item')?.value !== '' ? parseFloat(document.getElementById('p-fee-item')?.value) : null,
     feeDevol:       document.getElementById('p-fee-devol')?.value !== '' ? parseFloat(document.getElementById('p-fee-devol')?.value) : null,
-  });
+  }, price);
 
   if (realRates) {
     commission  = price * realRates.commissionRate;
@@ -4991,6 +5040,7 @@ function renderSettings() {
   renderPaletteSwatches();
   renderPackagingList();
   renderRecurringList();
+  renderShopeeTiersList();
   // Populate goal fields
   const gEnabled = document.getElementById('goal-enabled');
   const gType    = document.getElementById('goal-type');
@@ -7428,12 +7478,15 @@ function calcIdealPrice() {
   // Use product-specific fees if set
   const editingId2 = document.getElementById('p-editing-id').value;
   const editingProd = editingId2 ? products.find(x => x.id === editingId2) : null;
+  // A faixa de taxa depende do preço, mas aqui o preço é o que estamos calculando (é circular).
+  // Usa o preço atual do campo (ou o preço salvo do produto) como aproximação pra escolher a faixa.
+  const priceForTier = parseFloat(document.getElementById('p-price')?.value) || editingProd?.price || 0;
   const pseudoFees = getProductFees({
     feeCommission:  document.getElementById('p-fee-commission')?.value !== '' ? parseFloat(document.getElementById('p-fee-commission')?.value) : (editingProd?.feeCommission ?? null),
     feeTransaction: document.getElementById('p-fee-transaction')?.value !== '' ? parseFloat(document.getElementById('p-fee-transaction')?.value) : (editingProd?.feeTransaction ?? null),
     feeItem:        document.getElementById('p-fee-item')?.value !== '' ? parseFloat(document.getElementById('p-fee-item')?.value) : (editingProd?.feeItem ?? null),
     feeDevol:       document.getElementById('p-fee-devol')?.value !== '' ? parseFloat(document.getElementById('p-fee-devol')?.value) : (editingProd?.feeDevol ?? null),
-  });
+  }, priceForTier);
   const shopeeVarRate = pseudoFees.commission + pseudoFees.transaction;
   const shopeeFixed   = pseudoFees.itemFee + pseudoFees.devolFee;
 
@@ -7556,6 +7609,7 @@ function exportData() {
     products,
     sales,
     expenses,
+    shopeeFeeTiers,
   };
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
   const url  = URL.createObjectURL(blob);
@@ -7577,14 +7631,28 @@ function importData(event) {
 
       if (!confirm(`Importar ${data.products.length} produtos e ${data.sales.length} vendas? Os dados atuais serão substituídos.`)) return;
 
-      filaments = data.filaments || DEFAULT_FILAMENTS;
-      products  = data.products;
-      sales     = data.sales;
-      spools    = data.spools || [];
-      save('pl_filaments', filaments);
-      save('pl_products',  products);
-      save('pl_sales',     sales);
-      save('pl_spools',    spools);
+      filaments      = data.filaments      || DEFAULT_FILAMENTS;
+      products       = data.products;
+      sales          = data.sales;
+      spools         = data.spools         || [];
+      packaging      = data.packaging      || packaging;
+      marginAlerts   = data.marginAlerts   || marginAlerts;
+      monthlyGoal    = data.monthlyGoal    || monthlyGoal;
+      recurringCosts = data.recurringCosts || recurringCosts;
+      priceHistory   = data.priceHistory   || priceHistory;
+      wasteRate      = data.wasteRate      || wasteRate;
+      shopeeFeeTiers = data.shopeeFeeTiers || shopeeFeeTiers;
+      save('pl_filaments',        filaments);
+      save('pl_products',         products);
+      save('pl_sales',            sales);
+      save('pl_spools',           spools);
+      save('pl_packaging',        packaging);
+      save('pl_margin_alerts',    marginAlerts);
+      save('pl_monthly_goal',     monthlyGoal);
+      save('pl_recurring_costs',  recurringCosts);
+      save('pl_price_history',    priceHistory);
+      save('pl_waste_rate',       wasteRate);
+      save('pl_shopee_fee_tiers', shopeeFeeTiers);
 
       const msg = document.getElementById('import-msg');
       msg.style.display = 'block';
@@ -7633,8 +7701,12 @@ function calcRealShopeeRates(productId) {
 function populatePackagingSelect(selectId, selectedId) {
   const sel = document.getElementById(selectId);
   if (!sel) return;
-  sel.innerHTML = '<option value="" data-price="0">Sem embalagem — R$ 0,00</option>' +
-    packaging.map(p => `<option value="${p.id}" data-price="${p.price}"${p.id===selectedId?' selected':''}>${p.name} — R$ ${p.price.toFixed(2)}</option>`).join('');
+  // Embalagem é obrigatória: não existe mais opção "Sem embalagem" selecionável sem querer.
+  // Se o produto ainda não tem embalagem válida cadastrada, mostra um placeholder desabilitado
+  // pra forçar a escolha — saveProduct() bloqueia o salvamento enquanto isso não for feito.
+  const hasValidSelection = selectedId && packaging.some(p => p.id === selectedId);
+  sel.innerHTML = (!hasValidSelection ? '<option value="" data-price="0" disabled selected>Selecione a embalagem…</option>' : '')
+    + packaging.map(p => `<option value="${p.id}" data-price="${p.price}"${p.id===selectedId?' selected':''}>${p.name} — R$ ${p.price.toFixed(2)}</option>`).join('');
   // Set data-price on select itself
   const selected = packaging.find(p => p.id === (selectedId || sel.value)) || null;
   sel.dataset.price = selected ? selected.price : 0;
@@ -7686,6 +7758,64 @@ function savePackaging() {
   const btn = document.getElementById('save-pkg-btn');
   btn.innerHTML = '<i class="ti ti-circle-check ic"></i> Salvo!';
   setTimeout(() => btn.innerHTML = '<i class="ti ti-device-floppy ic"></i> Salvar Embalagens', 2000);
+}
+
+// ══════════════════════════════════════════
+//  TAXAS DA SHOPEE POR FAIXA DE PREÇO
+// ══════════════════════════════════════════
+function renderShopeeTiersList() {
+  const list = document.getElementById('shopee-tiers-list');
+  if (!list) return;
+  list.innerHTML = '';
+  const sorted = [...shopeeFeeTiers].sort((a, b) => a.min - b.min);
+  sorted.forEach((t) => {
+    const row = document.createElement('div');
+    row.className = 'shopee-tier-row';
+    row.dataset.id = t.id;
+    row.innerHTML = `
+      <div class="st-field"><label>De (R$)</label><input type="number" step="0.01" min="0" class="st-min" value="${t.min}" /></div>
+      <div class="st-field"><label>Até (R$, vazio = sem limite)</label><input type="number" step="0.01" min="0" class="st-max" placeholder="sem limite" value="${t.max != null ? t.max : ''}" /></div>
+      <div class="st-field"><label>Comissão %</label><input type="number" step="0.01" min="0" class="st-commission" value="${t.commission}" /></div>
+      <div class="st-field"><label>Transação %</label><input type="number" step="0.01" min="0" class="st-transaction" value="${t.transaction}" /></div>
+      <div class="st-field"><label>Taxa por item (R$)</label><input type="number" step="0.01" min="0" class="st-itemfee" value="${t.itemFee}" /></div>
+      <div class="st-field"><label>Devolução fácil (R$)</label><input type="number" step="0.01" min="0" class="st-devolfee" value="${t.devolFee}" /></div>
+      <button class="btn-icon st-remove" onclick="removeShopeeFeeTierRow('${t.id}')" ${sorted.length === 1 ? 'disabled' : ''} style="color:var(--text3)"><i class="ti ti-trash ic"></i></button>`;
+    list.appendChild(row);
+  });
+}
+
+function addShopeeFeeTierRow() {
+  const maxKnown = shopeeFeeTiers.reduce((m, t) => t.max != null ? Math.max(m, t.max) : m, 0);
+  shopeeFeeTiers.push({
+    id: Date.now().toString(), min: maxKnown, max: null,
+    commission: 18, transaction: 2, itemFee: 4.00, devolFee: 0.49,
+  });
+  renderShopeeTiersList();
+}
+
+function removeShopeeFeeTierRow(id) {
+  if (shopeeFeeTiers.length <= 1) return; // sempre precisa de ao menos uma faixa
+  shopeeFeeTiers = shopeeFeeTiers.filter(t => t.id !== id);
+  renderShopeeTiersList();
+}
+
+function saveShopeeFeeTiers() {
+  const rows = document.querySelectorAll('#shopee-tiers-list .shopee-tier-row');
+  const tiers = [...rows].map(row => ({
+    id:          row.dataset.id,
+    min:         parseFloat(row.querySelector('.st-min').value) || 0,
+    max:         row.querySelector('.st-max').value !== '' ? parseFloat(row.querySelector('.st-max').value) : null,
+    commission:  parseFloat(row.querySelector('.st-commission').value) || 0,
+    transaction: parseFloat(row.querySelector('.st-transaction').value) || 0,
+    itemFee:     parseFloat(row.querySelector('.st-itemfee').value) || 0,
+    devolFee:    parseFloat(row.querySelector('.st-devolfee').value) || 0,
+  }));
+  shopeeFeeTiers = tiers;
+  save('pl_shopee_fee_tiers', shopeeFeeTiers);
+  const btn = document.getElementById('save-shopee-tiers-btn');
+  btn.innerHTML = '<i class="ti ti-circle-check ic"></i> Salvo!';
+  setTimeout(() => btn.innerHTML = '<i class="ti ti-device-floppy ic"></i> Salvar Taxas', 2000);
+  renderShopeeTiersList();
 }
 
 // ══════════════════════════════════════════
@@ -8018,6 +8148,11 @@ function importShopee(event) {
       const makeKey = (s) => (s.shopeeOrderId || '') + '|' + (s._variationName || '') + '|' + (s._skuRef || '');
       const existingIds = new Set(sales.map(makeKey).filter(k => k !== '||'));
 
+      // ── Baixa automática: suporte pra detectar se este arquivo é o relatório "A Enviar"
+      // (só ele tem a coluna de data-limite de envio preenchida) e quais pedidos aparecem nele.
+      let hasShipDeadlineCol = false;
+      const importedOrderIds = new Set();
+
       // Helpers de leitura (numérico e texto, tolerantes a acento)
       const numCol = (r, ...names) => {
         for (const n of names) {
@@ -8058,6 +8193,7 @@ function importShopee(event) {
 
       rows.forEach(row => {
         const orderId    = String(row['ID do pedido'] || '').trim();
+        if (orderId) importedOrderIds.add(orderId);
         const status     = String(row['Status do pedido'] || '').toLowerCase();
         const productName = String(row['Nome do Produto'] || '').trim();
         // Busca texto por coluna, tolerante a acento/maiúscula
@@ -8078,6 +8214,7 @@ function importShopee(event) {
         const qty        = parseInt(row['Quantidade']) || 1;
         const dateRaw    = textCol(row, 'Data de criação do pedido', 'Data de criacao do pedido');
         const shipDeadlineRaw = textCol(row, 'Data prevista de envio', 'Data prevista de envio (Data)', 'Estimated Ship Date');
+        if (shipDeadlineRaw) hasShipDeadlineCol = true;
         const recipientName = textCol(row, 'Nome do destinatário', 'Nome do destinatario');
         const buyerUsername = textCol(row, 'Nome de usuário (comprador)', 'Nome de usuario (comprador)');
         const skuRef     = textCol(row, 'Número de referência SKU', 'Numero de referencia SKU', 'SKU de referência', 'SKU de referencia', 'Nº de referência SKU');
@@ -8212,8 +8349,30 @@ function importShopee(event) {
         imported++;
       });
 
+      // ── Baixa automática: o relatório "A Enviar" só lista pedidos que ainda precisam ser
+      // despachados. Se um pedido que estava pendente aqui não aparece mais nele, é porque a
+      // Shopee já tirou ele da fila de envio — provavelmente já foi despachado. Só roda quando
+      // o arquivo tem a coluna de data-limite de envio preenchida (sinal de que é o relatório
+      // certo), e sempre pede confirmação antes de aplicar.
+      let autoBaixaCount = 0;
+      if (hasShipDeadlineCol) {
+        const stillPending = sales.filter(s => isPendingShipment(s) && s.shopeeOrderId && !importedOrderIds.has(s.shopeeOrderId));
+        if (stillPending.length > 0) {
+          const preview = stillPending.slice(0, 8).map(s => {
+            const p = products.find(x => x.id === s.productId);
+            return `• ${p ? p.name : 'Produto removido'} — pedido ${s.shopeeOrderId}`;
+          }).join('\n');
+          const more = stillPending.length > 8 ? `\n... e mais ${stillPending.length - 8}` : '';
+          const confirmMsg = `${stillPending.length} pedido(s) que estavam pendentes de envio não aparecem mais neste relatório "A Enviar" — normalmente isso quer dizer que a Shopee já despachou eles.\n\nDar baixa automática (marcar como produzido e postado)?\n\n${preview}${more}`;
+          if (confirm(confirmMsg)) {
+            stillPending.forEach(s => { s.produced = true; s.readyToPost = true; s._autoBaixa = true; });
+            autoBaixaCount = stillPending.length;
+          }
+        }
+      }
+
       // Adiciona as novas vendas
-      if (newSales.length > 0 || deadlineUpdated > 0 || statusUpdated > 0) {
+      if (newSales.length > 0 || deadlineUpdated > 0 || statusUpdated > 0 || autoBaixaCount > 0) {
         sales = newSales.length > 0 ? [...sales, ...newSales] : sales;
         save('pl_sales', sales);
       }
@@ -8223,6 +8382,7 @@ function importShopee(event) {
       if (skipped > 0) msgText += ` ${skipped} ignorado(s) (cancelados, duplicados ou sem valor).`;
       if (deadlineUpdated > 0) msgText += ` ${deadlineUpdated} pedido(s) já existente(s) ganharam data-limite de envio.`;
       if (statusUpdated > 0) msgText += ` ${statusUpdated} pedido(s) tiveram o status atualizado (ex: despachado/entregue).`;
+      if (autoBaixaCount > 0) msgText += ` ${autoBaixaCount} pedido(s) receberam baixa automática (não apareciam mais no "A Enviar").`;
 
       msg.style.background = 'rgba(74,222,128,0.1)';
       msg.style.border = '1px solid rgba(74,222,128,0.25)';
@@ -8258,6 +8418,11 @@ function importShopee(event) {
       window._debugVarSample = null;
 
       renderSales();
+      if (autoBaixaCount > 0) {
+        if (document.getElementById('page-deadlines')?.classList.contains('active')) renderDeadlines();
+        if (document.getElementById('page-production')?.classList.contains('active')) renderProductionQueue();
+        if (document.getElementById('page-home')?.classList.contains('active')) renderHome();
+      }
 
     } catch(err) {
       msg.style.background = 'rgba(238,77,45,0.1)';
