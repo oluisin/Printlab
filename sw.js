@@ -1,4 +1,4 @@
-const CACHE = 'printlab-v1';
+const CACHE = 'printlab-v2';
 const ASSETS = [
   './index.html',
   './manifest.json',
@@ -27,8 +27,26 @@ self.addEventListener('activate', e => {
 // Fetch: cache-first for static assets, network-first for Firebase
 self.addEventListener('fetch', e => {
   const url = e.request.url;
-  // Always go network for Firebase (real-time data)
-  if (url.includes('firestore.googleapis.com') || url.includes('firebase')) {
+  // Só intercepta GET; login e gravações do Firebase passam direto
+  if (e.request.method !== 'GET') return;
+  // Always go network for Firebase (real-time data e login)
+  if (url.includes('firestore.googleapis.com') || url.includes('firebase') ||
+      url.includes('identitytoolkit') || url.includes('securetoken')) {
+    return;
+  }
+  // A página principal é sempre buscada na rede primeiro (cache só como reserva offline),
+  // senão o celular continua abrindo a versão antiga depois de cada atualização.
+  const isPage = e.request.mode === 'navigate' || /\/(index\.html)?$/.test(new URL(url).pathname);
+  if (isPage) {
+    e.respondWith(
+      fetch(e.request).then(res => {
+        if (res && res.status === 200) {
+          const clone = res.clone();
+          caches.open(CACHE).then(c => c.put(e.request, clone));
+        }
+        return res;
+      }).catch(() => caches.match(e.request).then(c => c || caches.match('./index.html')))
+    );
     return;
   }
   e.respondWith(

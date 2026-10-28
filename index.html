@@ -50,7 +50,10 @@
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
     import { getFirestore, doc, getDoc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+    import { getAuth, onAuthStateChanged, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
+    // A apiKey abaixo é só um identificador público do projeto — não é segredo.
+    // Quem protege os dados são o login (Firebase Auth) e as regras do Firestore (ver README das regras).
     const firebaseConfig = {
       apiKey: "AIzaSyCozAHXM2DrxCx8McIE2xUjnCnzPxdkGZE",
       authDomain: "printlab-shopee.firebaseapp.com",
@@ -69,8 +72,61 @@
     window._getDoc   = getDoc;
     window._setDoc   = setDoc;
     window._onSnapshot = onSnapshot;
-    window._firebaseReady = true;
-    window.dispatchEvent(new Event('firebaseReady'));
+
+    // ── Login (Google). O painel só sincroniza depois de entrar; as regras do Firestore
+    // decidem quais contas podem ler/gravar, então este login por si só não dá acesso a ninguém.
+    const auth = getAuth(app);
+    window._auth = auth;
+    window._user = null;
+    window._firebaseReady = false;
+
+    const gateEl  = () => document.getElementById('login-gate');
+    const gateMsg = () => document.getElementById('login-gate-msg');
+    window._showGate = function (msg) {
+      const g = gateEl(); if (!g) return;
+      if (gateMsg()) gateMsg().textContent = msg || '';
+      g.style.display = 'flex';
+    };
+    window._hideGate = function () {
+      const g = gateEl(); if (g) g.style.display = 'none';
+    };
+
+    window._signIn = async function () {
+      const provider = new GoogleAuthProvider();
+      provider.setCustomParameters({ prompt: 'select_account' });
+      if (gateMsg()) gateMsg().textContent = '';
+      try {
+        await signInWithPopup(auth, provider);
+      } catch (e) {
+        if (e.code === 'auth/popup-blocked' || e.code === 'auth/operation-not-supported-in-this-environment') {
+          // Alguns navegadores/PWA bloqueiam popup: tenta por redirecionamento
+          try { await signInWithRedirect(auth, provider); } catch (e2) { window._showGate('Não foi possível abrir o login (' + (e2.code || 'erro') + ').'); }
+        } else if (e.code !== 'auth/popup-closed-by-user' && e.code !== 'auth/cancelled-popup-request') {
+          window._showGate('Não foi possível entrar (' + (e.code || 'erro') + ').');
+        }
+      }
+    };
+
+    window._signOut = function () { return signOut(auth); };
+
+    getRedirectResult(auth).catch(function (e) {
+      if (e && e.code) window._showGate('Não foi possível entrar (' + e.code + ').');
+    });
+
+    onAuthStateChanged(auth, function (user) {
+      window._user = user;
+      if (user) {
+        window._hideGate();
+        window._firebaseReady = true;
+        window.dispatchEvent(new Event('firebaseReady'));
+      } else {
+        window._firebaseReady = false;
+        window._showGate(window._pendingGateMsg || '');
+        window._pendingGateMsg = '';
+      }
+      const who = document.getElementById('account-email');
+      if (who) who.textContent = user ? (user.email || '') : '—';
+    });
   </script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -1026,6 +1082,18 @@
   </style>
 </head>
 <body>
+<div id="login-gate" style="display:none;position:fixed;inset:0;z-index:99999;align-items:center;justify-content:center;padding:20px;background:radial-gradient(ellipse 700px 500px at 10% -10%, rgba(255,0,170,0.32), transparent 60%),radial-gradient(ellipse 700px 600px at 100% 0%, rgba(0,220,255,0.26), transparent 55%),#050308;">
+  <div style="width:100%;max-width:360px;background:#100C16;border:1px solid #2A1E38;border-radius:22px;padding:28px 22px;text-align:center;font-family:'Space Grotesk',sans-serif;color:#fff">
+    <div style="font-size:30px;font-weight:700;letter-spacing:-0.5px;margin-bottom:4px">Print Lab</div>
+    <div style="font-size:13px;color:#A79EB8;margin-bottom:22px">Entre com a conta autorizada para ver o painel.</div>
+    <button id="login-gate-btn" onclick="window._signIn()" style="width:100%;display:flex;align-items:center;justify-content:center;gap:10px;background:#FF00AA;color:#fff;border:0;border-radius:14px;padding:14px 16px;font-family:inherit;font-size:15px;font-weight:600;cursor:pointer"></button>
+    <div id="login-gate-msg" role="alert" style="min-height:18px;margin-top:14px;font-size:12px;color:#FFC800;line-height:1.4"></div>
+  </div>
+</div>
+<script>
+  // Ícone via innerHTML (regra do projeto: nunca textContent em ícones)
+  document.getElementById('login-gate-btn').innerHTML = '<i class="ti ti-brand-google"></i> Entrar com Google';
+</script>
 <script>
   // Aplica o tema e a paleta salvos IMEDIATAMENTE, antes de qualquer render, evitando flash de cor errada
   try {
@@ -1683,6 +1751,14 @@
         <div class="page-title">Configurações</div>
         <div class="page-sub">Presets de filamento e parâmetros gerais</div>
       </div>
+    </div>
+
+    <div class="settings-card">
+      <div class="settings-title"><i class="ti ti-user-circle ic"></i> Conta</div>
+      <div style="font-size:13px;color:var(--text2);margin-bottom:12px;line-height:1.6">
+        Conectado como <strong id="account-email" style="color:var(--text)">—</strong>
+      </div>
+      <button class="btn-ghost" style="font-size:13px;padding:7px 14px" onclick="window._signOut && window._signOut()"><i class="ti ti-logout ic"></i> Sair</button>
     </div>
 
     <div class="settings-card">
@@ -3014,8 +3090,18 @@ function scheduleFbSync() {
   _syncTimeout = setTimeout(pushToFirebase, 800);
 }
 
+// Conta sem permissão nas regras do Firestore: desloga e volta para a tela de login com aviso.
+function handleFirebaseDenied(e) {
+  if (e && e.code === 'permission-denied') {
+    window._pendingGateMsg = 'Esta conta não tem acesso ao painel. Entre com a conta autorizada.';
+    if (window._signOut) window._signOut();
+    return true;
+  }
+  return false;
+}
+
 async function pushToFirebase() {
-  if (!window._db) return;
+  if (!window._db || !window._user) return;
   try {
     await window._setDoc(window._doc(window._db, 'store', 'data'), {
       filaments, packaging, marginAlerts, monthlyGoal, recurringCosts, priceHistory, wasteRate, products, sales, expenses, shopeeFeeTiers,
@@ -3023,13 +3109,14 @@ async function pushToFirebase() {
     });
     showSyncStatus('<i class="ti ti-circle-check ic"></i> Sincronizado', 'var(--green)');
   } catch(e) {
+    if (handleFirebaseDenied(e)) return;
     showSyncStatus('<i class="ti ti-alert-triangle ic"></i> Erro ao sincronizar', 'var(--yellow)');
     console.error('Firebase sync error:', e);
   }
 }
 
 async function pullFromFirebase() {
-  if (!window._db) return;
+  if (!window._db || !window._user) return;
   showSyncStatus('<i class="ti ti-refresh ic"></i> Sincronizando...', 'var(--text3)');
   try {
     const snap = await window._getDoc(window._doc(window._db, 'store', 'data'));
@@ -3087,6 +3174,7 @@ async function pullFromFirebase() {
       await pushToFirebase();
     }
   } catch(e) {
+    if (handleFirebaseDenied(e)) return;
     showSyncStatus('<i class="ti ti-alert-triangle ic"></i> Offline', 'var(--yellow)');
     console.error('Firebase pull error:', e);
   }
