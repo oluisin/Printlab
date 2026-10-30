@@ -148,6 +148,7 @@
       --emerald: #00FFB3;
       --sapphire:#00DCFF;
       --ruby:    #FF00AA;
+      --red:     #FF5C7A;   /* prejuízo / alerta — nunca usar ciano para valor negativo */
       --r:       22px;
     }
 
@@ -165,6 +166,7 @@
       --green:   #16a34a;
       --yellow:  #d97706;
       --blue:    #2563eb;
+      --red:     #dc2626;
     }
 
     /* ══════════════ PALETAS DE COR (independente de claro/escuro) ══════════════ */
@@ -1079,6 +1081,76 @@
       .kpi-grid { grid-template-columns: 1fr 1fr; }
       .kpi-value { font-size: 17px; }
     }
+
+    /* ══════════════ REFINAMENTO VISUAL ══════════════
+       Camada final: mantém a identidade neon, mas deixa números legíveis,
+       cores com significado fixo e telas mais compactas. */
+
+    /* Números: dígitos de largura igual, sem quebrar "R$" do valor */
+    body { font-variant-numeric: tabular-nums; }
+    .kpi-value {
+      font-family: 'Inter', sans-serif;
+      font-weight: 700;
+      font-size: clamp(18px, 1.55vw, 24px);
+      letter-spacing: -0.02em;
+      white-space: nowrap;
+      line-height: 1.15;
+    }
+    .kpi-label { padding-right: 36px; line-height: 1.3; }
+
+    /* Cards de KPI: ícone no canto (não rouba largura do número), sem flutuar */
+    .kpi-card { display: block; padding: 20px 22px; animation: none; }
+    .kpi-card .kpi-icon { position: absolute; top: 16px; right: 16px; width: 32px; height: 32px; font-size: 14px; opacity: 0.8; }
+    .kpi-card.k1, .kpi-card.k2, .kpi-card.k3, .kpi-card.k4 { box-shadow: none; }
+
+    /* Cores com significado: lucro = verde, prejuízo = vermelho, receita = texto.
+       A barra colorida no topo do card só aparece no card de lucro. */
+    .kpi-card::before { background: rgba(255,255,255,0.08) !important; }
+    .kpi-card:has(.kpi-value[id*="profit"])::before { background: var(--green) !important; }
+    .kpi-value[id*="profit"], #home-today-profit, #home-month-profit, #sales-profit { color: var(--green) !important; }
+    .kpi-value[id*="rev"], #kpi-shopee-income, #kpi-units, #an-units, #an-avg-price, #proj-avg-month { color: var(--text) !important; }
+    .is-negative,
+    .kpi-value[id*="profit"].is-negative,
+    #home-today-profit.is-negative, #home-month-profit.is-negative, #sales-profit.is-negative { color: var(--red) !important; }
+
+    /* Gráficos lado a lado não estouram a coluna */
+    .charts-row > *, .grid-2 > * { min-width: 0; }
+    .charts-row canvas { max-width: 100%; }
+
+    /* Home: capa mais baixa, "Hoje" mais compacto */
+    #page-home .home-banner { min-height: 0; height: 104px; }
+    #home-today-grid > div { padding: 16px !important; border-width: 1px !important; }
+    #home-today-grid > div > div:first-child { width: 30px !important; height: 30px !important; margin-bottom: 8px !important; font-size: 14px !important; }
+    #page-home [style*="border:2px solid var(--border)"] { border-width: 1px !important; }
+
+    @media (max-width: 768px) {
+      .kpi-card { padding: 14px; }
+      .kpi-card .kpi-icon { top: 10px; right: 10px; width: 26px; height: 26px; font-size: 12px; }
+      .kpi-label { padding-right: 30px; }
+      .kpi-value { font-size: 17px; }
+
+      #page-home .home-banner { height: 72px; }
+      #page-home .home-banner-sub { display: none; }
+      #home-greeting { font-size: 20px !important; }
+      /* "Hoje": 2x2 baixinho, sem ícones */
+      #home-today-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; gap: 8px !important; }
+      #home-today-grid > div { padding: 10px 12px !important; border-radius: 14px !important; }
+      #home-today-grid > div > div:first-child { display: none !important; }
+      #home-today-grid > div > div:nth-child(2) { font-size: 10px !important; margin-bottom: 2px !important; }
+      #home-today-grid > div > div:nth-child(3) { font-size: 16px !important; white-space: nowrap; }
+
+      /* KPIs sempre 2x2 no celular (algumas grades têm 4 colunas fixas no HTML) */
+      .kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+
+      /* Vendas: card compacto — data + produto, e uma linha com qtd, receita e lucro */
+      #sales-tbody tr { padding: 10px 12px; }
+      #sales-tbody td:nth-child(3) { border-bottom: none; padding-bottom: 2px; margin-bottom: 2px; padding-right: 96px; }
+      #sales-tbody td:nth-child(4), #sales-tbody td:nth-child(6), #sales-tbody td:nth-child(8) { display: inline-block; margin-right: 14px; font-size: 13px; }
+      #sales-tbody td:nth-child(5), #sales-tbody td:nth-child(7) { display: none; }
+      #sales-tbody td:nth-child(4)::before { content: ''; }
+      #sales-tbody td:nth-child(4)::after { content: '×'; color: var(--text3); }
+      #sales-tbody td:last-child { top: 6px; right: 6px; }
+    }
   </style>
 </head>
 <body>
@@ -1160,18 +1232,12 @@
     <!-- Principal -->
     <div class="nav-group" id="ng-principal">
       <div class="nav-group-header" onclick="toggleNavGroup('ng-principal')">
-        <span class="nav-section-text">Principal</span>
+        <span class="nav-section-text">Dia a dia</span>
         <span class="nav-group-chevron">▾</span>
       </div>
       <div class="nav-group-body">
-        <button class="nav-btn" onclick="navigate('home')">
+        <button class="nav-btn active" onclick="navigate('home')">
           <i class="ti ti-home nb-icon" aria-hidden="true"></i> Início
-        </button>
-        <button class="nav-btn active" onclick="navigate('dashboard')">
-          <i class="ti ti-layout-dashboard nb-icon" aria-hidden="true"></i> Dashboard
-        </button>
-        <button class="nav-btn" onclick="navigate('products')">
-          <i class="ti ti-package nb-icon" aria-hidden="true"></i> Produtos
         </button>
         <button class="nav-btn" onclick="navigate('sales')">
           <i class="ti ti-shopping-cart nb-icon" aria-hidden="true"></i> Vendas
@@ -1181,6 +1247,12 @@
         </button>
         <button class="nav-btn" onclick="navigate('deadlines')">
           <i class="ti ti-clock-exclamation nb-icon" aria-hidden="true"></i> Prazos de Envio
+        </button>
+        <button class="nav-btn" onclick="navigate('products')">
+          <i class="ti ti-package nb-icon" aria-hidden="true"></i> Produtos
+        </button>
+        <button class="nav-btn" onclick="navigate('dashboard')">
+          <i class="ti ti-layout-dashboard nb-icon" aria-hidden="true"></i> Dashboard
         </button>
       </div>
     </div>
@@ -1198,11 +1270,14 @@
         <button class="nav-btn" onclick="navigate('breakeven')">
           <i class="ti ti-scale nb-icon" aria-hidden="true"></i> Ponto de Equilíbrio
         </button>
+        <button class="nav-btn" onclick="navigate('projection')">
+          <i class="ti ti-trending-up nb-icon" aria-hidden="true"></i> Projeção
+        </button>
       </div>
     </div>
 
-    <!-- Análises -->
-    <div class="nav-group" id="ng-analises">
+    <!-- Análises — fechado por padrão; abre sozinho ao entrar numa dessas telas -->
+    <div class="nav-group collapsed" id="ng-analises">
       <div class="nav-group-header" onclick="toggleNavGroup('ng-analises')">
         <span class="nav-section-text">Análises</span>
         <span class="nav-group-chevron">▾</span>
@@ -1223,9 +1298,6 @@
         </button>
         <button class="nav-btn" onclick="navigate('pricehistory')">
           <i class="ti ti-history nb-icon" aria-hidden="true"></i> Histórico de Preços
-        </button>
-        <button class="nav-btn" onclick="navigate('projection')">
-          <i class="ti ti-trending-up nb-icon" aria-hidden="true"></i> Projeção
         </button>
         <button class="nav-btn" onclick="navigate('calendar')">
           <i class="ti ti-calendar nb-icon" aria-hidden="true"></i> Calendário
@@ -1262,17 +1334,14 @@
     <button class="bnav-btn active" id="bnav-home" onclick="navigate('home')">
       <span class="bnav-icon"><i class="ti ti-home ic"></i></span>Início
     </button>
-    <button class="bnav-btn" id="bnav-dashboard" onclick="navigate('dashboard')">
-      <span class="bnav-icon"><i class="ti ti-chart-bar ic"></i></span>Dashboard
-    </button>
-    <button class="bnav-btn" id="bnav-products" onclick="navigate('products')">
-      <span class="bnav-icon"><i class="ti ti-package ic"></i></span>Produtos
-    </button>
     <button class="bnav-btn" id="bnav-sales" onclick="navigate('sales')">
       <span class="bnav-icon"><i class="ti ti-shopping-cart ic"></i></span>Vendas
     </button>
-    <button class="bnav-btn" id="bnav-expenses" onclick="navigate('expenses')">
-      <span class="bnav-icon"><i class="ti ti-cash ic"></i></span>Custos
+    <button class="bnav-btn" id="bnav-production" onclick="navigate('production')">
+      <span class="bnav-icon"><i class="ti ti-clipboard-list ic"></i></span>Produção
+    </button>
+    <button class="bnav-btn" id="bnav-products" onclick="navigate('products')">
+      <span class="bnav-icon"><i class="ti ti-package ic"></i></span>Produtos
     </button>
     <button class="bnav-btn" id="bnav-more" onclick="openMoreMenu()">
       <span class="bnav-icon">⊞</span>Mais
@@ -1286,11 +1355,15 @@
     <div class="more-handle"></div>
     <div class="more-title">Mais opções</div>
 
-    <div class="more-section-label">Produção</div>
+    <div class="more-section-label">Loja</div>
     <div class="more-grid">
-      <button class="more-item" onclick="navMore('production')">
-        <span class="more-icon"><i class="ti ti-clipboard-list ic"></i></span>
-        <span class="more-label">Fila de Produção</span>
+      <button class="more-item" onclick="navMore('dashboard')">
+        <span class="more-icon"><i class="ti ti-chart-bar ic"></i></span>
+        <span class="more-label">Dashboard</span>
+      </button>
+      <button class="more-item" onclick="navMore('expenses')">
+        <span class="more-icon"><i class="ti ti-cash ic"></i></span>
+        <span class="more-label">Custos</span>
       </button>
       <button class="more-item" onclick="navMore('deadlines')">
         <span class="more-icon"><i class="ti ti-clock-exclamation ic"></i></span>
@@ -1436,6 +1509,9 @@
       <button class="btn-primary" onclick="openSaleModal();navigate('sales')" style="font-family:'Inter';font-weight:700;font-size:14px;background:var(--accent);color:#fff;border:none;border-radius:10px;padding:12px 22px;cursor:pointer">+ Nova Venda</button>
     </div>
 
+    <!-- Alertas — logo no topo: é o que pede ação hoje -->
+    <div id="home-alerts" style="display:flex;flex-direction:column;gap:8px;margin-bottom:22px"></div>
+
     <!-- Hoje — grade de cards coloridos -->
     <div style="font-size:12px;color:var(--text3);text-transform:uppercase;letter-spacing:0.08em;font-weight:700;margin-bottom:10px">Hoje</div>
     <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:26px" id="home-today-grid">
@@ -1450,7 +1526,7 @@
         <div id="home-today-rev" style="font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:19px">—</div>
       </div>
       <div style="background:var(--bg2);border:2px solid var(--border);border-radius:20px;padding:20px">
-        <div style="width:38px;height:38px;border-radius:12px;background:var(--accent);opacity:0.15;display:flex;align-items:center;justify-content:center;font-size:16px;margin-bottom:12px"><i class="ti ti-chart-line ic"></i></div>
+        <div style="width:38px;height:38px;border-radius:12px;background:var(--bg3);border:1px solid var(--border);color:var(--green);display:flex;align-items:center;justify-content:center;font-size:16px;margin-bottom:12px"><i class="ti ti-chart-line ic"></i></div>
         <div style="font-size:11px;color:var(--text2);font-weight:600;margin-bottom:4px">Lucro hoje</div>
         <div id="home-today-profit" style="font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:19px;color:var(--accent2)">—</div>
       </div>
@@ -1502,9 +1578,6 @@
         </div>
       </div>
     </div>
-
-    <!-- Alertas -->
-    <div id="home-alerts" style="display:flex;flex-direction:column;gap:8px;margin-bottom:22px"></div>
 
     <!-- Últimas vendas -->
     <div style="background:var(--bg2);border:2px solid var(--border);border-radius:20px;padding:24px">
@@ -1575,7 +1648,7 @@
         <div class="kpi-icon"><i class="ti ti-chart-line ic"></i></div>
       </div>
       <div class="kpi-card" style="border:1.5px solid var(--border);border-radius:var(--r);padding:26px 30px;display:flex;justify-content:space-between;align-items:flex-start;position:relative;overflow:hidden">
-        <div style="position:absolute;top:0;left:0;right:0;height:3px;background:var(--ruby)"></div>
+        <div style="position:absolute;top:0;left:0;right:0;height:3px;background:rgba(255,255,255,0.08)"></div>
         <div>
           <div class="kpi-label">Unidades / Produtos</div>
           <div style="display:flex;align-items:baseline;gap:8px;margin-top:6px">
@@ -3840,7 +3913,15 @@ function calcProfitTotal(p, price, qty, shopeeIncome, overrideGrams) {
   return { totalRevenue, totalCosts, totalProfit, prodCost, totalFees, margin, wasteCost };
 }
 
-function fmt(n) { return 'R$ ' + n.toFixed(2); }
+// Moeda no padrão brasileiro: R$ 1.136,18 (espaço fixo para "R$" não quebrar do número)
+const _brl = new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+function fmt(n) { return 'R$ ' + _brl.format(n || 0); }
+// Eixos de gráfico: R$ 1,2 mil / R$ 850
+function fmtAxis(v) {
+  const abs = Math.abs(v);
+  if (abs >= 1000) return 'R$ ' + (v / 1000).toLocaleString('pt-BR', { maximumFractionDigits: 1 }) + ' mil';
+  return 'R$ ' + Math.round(v).toLocaleString('pt-BR');
+}
 
 // ══════════════════════════════════════════
 //  DATA LOCAL (correção de fuso horário)
@@ -3984,7 +4065,7 @@ function navigate(page) {
   } else {
     // Page not in bottom nav → highlight "Mais"
     const moreBtn = document.getElementById('bnav-more');
-    const directMobilePages = ['home','dashboard','products','sales','expenses'];
+    const directMobilePages = ['home','sales','production','products'];
     if (moreBtn && !directMobilePages.includes(page)) moreBtn.classList.add('active');
   }
 
@@ -3992,8 +4073,8 @@ function navigate(page) {
   const pageGroups = {
     home: 'ng-principal', dashboard: 'ng-principal', products: 'ng-principal', sales: 'ng-principal', production: 'ng-principal',
     deadlines: 'ng-principal',
-    expenses: 'ng-financeiro', breakeven: 'ng-financeiro',
-    ranking: 'ng-analises', seasonality: 'ng-analises', hours: 'ng-analises', analysis: 'ng-analises', pricehistory: 'ng-analises', projection: 'ng-analises', calendar: 'ng-analises', score: 'ng-analises',
+    expenses: 'ng-financeiro', breakeven: 'ng-financeiro', projection: 'ng-financeiro',
+    ranking: 'ng-analises', seasonality: 'ng-analises', hours: 'ng-analises', analysis: 'ng-analises', pricehistory: 'ng-analises', calendar: 'ng-analises', score: 'ng-analises',
     settings: 'ng-sistema',
   };
   const groupId = pageGroups[page];
@@ -4265,10 +4346,10 @@ function renderDashboard() {
       labels: months.map(m => m.label),
       datasets: [
         { label: 'Receita', data: months.map(m => +m.rev.toFixed(2)), borderColor: '#FF00AA', backgroundColor: 'rgba(255,0,170,0.1)', borderWidth: 2.5, pointRadius: 3, tension: 0.3, fill: true },
-        { label: 'Lucro',   data: months.map(m => +m.profit.toFixed(2)), borderColor: '#00DCFF', backgroundColor: 'rgba(0,220,255,0.08)', borderWidth: 2.5, pointRadius: 3, tension: 0.3, fill: true },
+        { label: 'Lucro',   data: months.map(m => +m.profit.toFixed(2)), borderColor: '#00FFB3', backgroundColor: 'rgba(0,255,179,0.08)', borderWidth: 2.5, pointRadius: 3, tension: 0.3, fill: true },
       ]
     },
-    options: { responsive: true, maintainAspectRatio: true, aspectRatio: 2, plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => fmt(ctx.raw) } } }, scales: { x: { ticks: chartDefaults, grid: { color: 'rgba(255,255,255,0.06)' } }, y: { ticks: { ...chartDefaults, callback: v => 'R$' + v }, grid: { color: 'rgba(255,255,255,0.06)' } } } }
+    options: { responsive: true, maintainAspectRatio: true, aspectRatio: 2, plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => fmt(ctx.raw) } } }, scales: { x: { ticks: chartDefaults, grid: { color: 'rgba(255,255,255,0.06)' } }, y: { ticks: { ...chartDefaults, callback: fmtAxis }, grid: { color: 'rgba(255,255,255,0.06)' } } } }
   });
 
   // Highlight selected month in units chart
@@ -4280,10 +4361,11 @@ function renderDashboard() {
   chartProducts = safeChart(document.getElementById('chart-products'), {
     type: 'bar',
     data: {
-      labels: topProds.map(p => p.name.length > 20 ? p.name.slice(0,20)+'…' : p.name),
+      // Nomes curtos: o Chart.js corta rótulos longos do eixo quando o card é estreito
+      labels: topProds.map(p => p.name.length > 14 ? p.name.slice(0,13).trim()+'…' : p.name),
       datasets: [{ label: 'Receita', data: topProds.map(p => +p.rev.toFixed(2)), backgroundColor: barColors, borderRadius: 5 }]
     },
-    options: { indexAxis: 'y', responsive: true, maintainAspectRatio: true, aspectRatio: 1.6, plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => fmt(ctx.raw) } } }, scales: { x: { ticks: { ...chartDefaults, callback: v => 'R$' + v }, grid: { color: 'rgba(255,255,255,0.06)' } }, y: { ticks: chartDefaults, grid: { display: false } } } }
+    options: { indexAxis: 'y', responsive: true, maintainAspectRatio: true, aspectRatio: 1.6, plugins: { legend: { display: false }, tooltip: { callbacks: { title: items => topProds[items[0].dataIndex].name, label: ctx => fmt(ctx.raw) } } }, scales: { x: { ticks: { ...chartDefaults, callback: fmtAxis }, grid: { color: 'rgba(255,255,255,0.06)' } }, y: { ticks: chartDefaults, grid: { display: false } } } }
   });
 
   // Units bar
@@ -4335,7 +4417,7 @@ function renderProducts() {
     const c = calcProfit(p, p.price);
     const margin = c.margin.toFixed(1);
     const badgeClass = c.margin > 30 ? 'badge-green' : c.margin > 15 ? 'badge-yellow' : 'badge-red';
-    const profitColor = c.profit > 0 ? 'var(--green)' : 'var(--accent2)';
+    const profitColor = c.profit > 0 ? 'var(--green)' : 'var(--red)';
     const tr = document.createElement('tr');
     const shopeeNameTag = p.shopeeName
       ? `<div class="td-sub" style="color:var(--accent2);opacity:0.75"><i class="ti ti-building-store ic"></i> ${p.shopeeName.length > 42 ? p.shopeeName.slice(0,42)+'…' : p.shopeeName}</div>`
@@ -4679,7 +4761,7 @@ function renderSales() {
       <td>${fmt(s.salePrice)}</td>
       <td style="font-weight:600">${fmt(s.salePrice * s.qty)}</td>
       <td style="font-weight:600;color:#34d399">${fmt(shopeeIncomeRow)}${shopeeTag}</td>
-      <td style="font-weight:600;color:${totalP>0?'var(--green)':'var(--accent2)'}">${fmt(totalP)}</td>
+      <td style="font-weight:600;color:${totalP>0?'var(--green)':'var(--red)'}">${fmt(totalP)}</td>
       <td style="display:flex;gap:4px">
         ${isTrackedForProduction(s)
           ? `<span title="Já está na Fila de Produção" style="width:30px;height:30px;display:flex;align-items:center;justify-content:center;color:var(--accent)"><i class="ti ti-clipboard-check ic"></i></span>`
@@ -4721,12 +4803,12 @@ function updateSaleSim() {
   const ct = calcProfitTotal(p, price, qty);
   document.getElementById('ss-cost').textContent   = fmt(c.total);
   document.getElementById('ss-profit').textContent = fmt(c.profit);
-  document.getElementById('ss-profit').style.color = c.profit > 0 ? 'var(--green)' : 'var(--accent2)';
+  document.getElementById('ss-profit').style.color = c.profit > 0 ? 'var(--green)' : 'var(--red)';
   document.getElementById('ss-margin').textContent = ct.margin.toFixed(1) + '%';
   if (qty > 1) {
     document.getElementById('ss-total-label').textContent = `Lucro Total (${qty}x)`;
     document.getElementById('ss-total').textContent = fmt(ct.totalProfit);
-    document.getElementById('ss-total').style.color = ct.totalProfit > 0 ? 'var(--green)' : 'var(--accent2)';
+    document.getElementById('ss-total').style.color = ct.totalProfit > 0 ? 'var(--green)' : 'var(--red)';
     document.getElementById('ss-total-wrap').style.display = 'block';
   } else {
     document.getElementById('ss-total-wrap').style.display = 'none';
@@ -4939,7 +5021,7 @@ function updatePartsTotal() {
     const fil = getFilament(p.filamentType);
     return s + (p.grams / 1000) * fil.pricePerKg * (p.qty || 1);
   }, 0);
-  el.textContent = `Total: ${totalGrams.toFixed(0)}g · Custo filamento: R$ ${totalCost.toFixed(2)}`;
+  el.textContent = `Total: ${totalGrams.toFixed(0)}g · Custo filamento: ${fmt(totalCost)}`;
 }
 
 function populateFilamentSelect(selectId) {
@@ -5914,8 +5996,8 @@ function renderProjection() {
   const fmtCompact = (v) => {
     if (v == null) return '';
     const abs = Math.abs(v);
-    if (abs >= 1000) return 'R$' + (v/1000).toFixed(1).replace('.0','') + 'k';
-    return 'R$' + Math.round(v);
+    if (abs >= 1000) return 'R$' + (v/1000).toLocaleString('pt-BR', { maximumFractionDigits: 1 }) + 'k';
+    return 'R$' + Math.round(v).toLocaleString('pt-BR');
   };
 
   // Plugin customizado: desenha o valor fixo acima/abaixo de cada ponto,
@@ -5975,7 +6057,7 @@ function renderProjection() {
       },
       scales: {
         x: { ticks: chartDefaults, grid: { color: 'rgba(255,255,255,0.06)' } },
-        y: { ticks: { ...chartDefaults, callback: v => 'R$' + v }, grid: { color: 'rgba(255,255,255,0.06)' } }
+        y: { ticks: { ...chartDefaults, callback: fmtAxis }, grid: { color: 'rgba(255,255,255,0.06)' } }
       }
     }
   });
@@ -6570,7 +6652,7 @@ function launchRecurringNow() {
   const curM = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0');
   const day1 = curM + '-01';
   const total = recurringCosts.reduce((s,r) => s + r.value, 0);
-  if (!confirm(`Lançar ${recurringCosts.length} custo(s) fixo(s) para ${curM}?\nTotal: R$ ${total.toFixed(2)}`)) return;
+  if (!confirm(`Lançar ${recurringCosts.length} custo(s) fixo(s) para ${curM}?\nTotal: ${fmt(total)}`)) return;
   _doLaunchRecurring(curM, day1);
   alert(`✅ ${recurringCosts.length} custo(s) lançado(s) para ${curM}!`);
 }
@@ -6812,7 +6894,7 @@ function renderSeasonality() {
       const intensity = maxCellVal > 0 ? val / maxCellVal : 0;
       const alpha = val > 0 ? 0.1 + intensity * 0.85 : 0;
       const textColor = intensity > 0.5 ? '#fff' : 'var(--text2)';
-      const displayVal = val > 0 ? (metric === 'units' ? val : (val >= 100 ? 'R$'+Math.round(val) : fmt(val))) : '';
+      const displayVal = val > 0 ? (metric === 'units' ? val : (val >= 100 ? 'R$' + Math.round(val).toLocaleString('pt-BR') : fmt(val))) : '';
       heatmap += `<div style="width:${cellSize}px;height:${cellSize}px;border-radius:6px;background:rgba(59,130,246,${alpha.toFixed(2)});display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:600;color:${textColor};flex-shrink:0;margin-right:3px;cursor:default" title="${p?.name} · ${fmtMonth(m)}: ${fmtVal(val)}">${displayVal}</div>`;
     });
     heatmap += `</div>`;
@@ -6855,7 +6937,7 @@ function renderSeasonality() {
       },
       scales: {
         x: { ticks: chartDefaults, grid: { color: 'rgba(255,255,255,0.06)' } },
-        y: { ticks: { ...chartDefaults, callback: v => metric === 'units' ? v : 'R$'+v }, grid: { color: 'rgba(255,255,255,0.06)' } }
+        y: { ticks: { ...chartDefaults, callback: v => metric === 'units' ? v : fmtAxis(v) }, grid: { color: 'rgba(255,255,255,0.06)' } }
       }
     }
   });
@@ -6975,7 +7057,7 @@ function qsGoStep3() {
   grid.innerHTML = opts.slice(0,6).map(price => {
     const vname = varMap[price] ? `<div style="font-size:10px;color:var(--text3);margin-top:2px">${varMap[price]}</div>` : '';
     return `<button class="quick-price-btn ${price===_qs.price?'selected':''}" onclick="qsSelectPrice(${price})">
-      R$ ${price.toFixed(2)}${vname}
+      ${fmt(price)}${vname}
     </button>`;
   }).join('');
   document.getElementById('qs-custom-price').value = '';
@@ -7138,12 +7220,12 @@ function renderAnalysis() {
       labels: months.map(m => m.label),
       datasets: [
         { label: 'Receita', data: months.map(m => +m.rev.toFixed(2)), backgroundColor: 'rgba(255,0,170,0.55)', borderRadius: 4 },
-        { label: 'Lucro',   data: months.map(m => +m.profit.toFixed(2)), backgroundColor: 'rgba(0,220,255,0.55)', borderRadius: 4 },
+        { label: 'Lucro',   data: months.map(m => +m.profit.toFixed(2)), backgroundColor: 'rgba(0,255,179,0.55)', borderRadius: 4 },
       ]
     },
     options: { responsive: true, maintainAspectRatio: true, aspectRatio: 2,
       plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => fmt(ctx.raw) } } },
-      scales: { x: { ticks: chartDefaults, grid: { color: 'rgba(255,255,255,0.06)' } }, y: { ticks: { ...chartDefaults, callback: v => 'R$'+v }, grid: { color: 'rgba(255,255,255,0.06)' } } }
+      scales: { x: { ticks: chartDefaults, grid: { color: 'rgba(255,255,255,0.06)' } }, y: { ticks: { ...chartDefaults, callback: fmtAxis }, grid: { color: 'rgba(255,255,255,0.06)' } } }
     }
   });
 
@@ -7162,7 +7244,7 @@ function renderAnalysis() {
     },
     options: { responsive: true, maintainAspectRatio: true, aspectRatio: 2,
       plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => fmt(ctx.raw) } } },
-      scales: { x: { ticks: chartDefaults, grid: { color: 'rgba(255,255,255,0.06)' } }, y: { ticks: { ...chartDefaults, callback: v => 'R$'+v }, grid: { color: 'rgba(255,255,255,0.06)' } } }
+      scales: { x: { ticks: chartDefaults, grid: { color: 'rgba(255,255,255,0.06)' } }, y: { ticks: { ...chartDefaults, callback: fmtAxis }, grid: { color: 'rgba(255,255,255,0.06)' } } }
     }
   });
 
@@ -7290,7 +7372,7 @@ function calcIdealPrice() {
 
   _lastIdealPrice = idealPrice;
 
-  const fmt2 = v => 'R$ ' + v.toFixed(2);
+  const fmt2 = fmt;
 
   const idealProfit = idealPrice - totalCostAtIdeal;
   const rendaEst    = idealPrice - idealPrice * shopeeVarRate - shopeeFixed;
@@ -7487,7 +7569,7 @@ function populatePackagingSelect(selectId, selectedId) {
   // pra forçar a escolha — saveProduct() bloqueia o salvamento enquanto isso não for feito.
   const hasValidSelection = selectedId && packaging.some(p => p.id === selectedId);
   sel.innerHTML = (!hasValidSelection ? '<option value="" data-price="0" disabled selected>Selecione a embalagem…</option>' : '')
-    + packaging.map(p => `<option value="${p.id}" data-price="${p.price}"${p.id===selectedId?' selected':''}>${p.name} — R$ ${p.price.toFixed(2)}</option>`).join('');
+    + packaging.map(p => `<option value="${p.id}" data-price="${p.price}"${p.id===selectedId?' selected':''}>${p.name} — ${fmt(p.price)}</option>`).join('');
   // Set data-price on select itself
   const selected = packaging.find(p => p.id === (selectedId || sel.value)) || null;
   sel.dataset.price = selected ? selected.price : 0;
@@ -8272,6 +8354,15 @@ applyTheme(loadLocal('pl_theme', 'dark'));
 tryInit();
 updateTopbarIssueTag();
 // Custos recorrentes são lançados em onFirebaseLoaded(), depois de carregar a nuvem
+// Lucro negativo fica vermelho nos cards (o CSS pinta lucro de verde por padrão)
+(function watchProfitSigns() {
+  const sel = '.kpi-value[id*="profit"], #home-today-profit, #home-month-profit, #sales-profit';
+  const paint = el => el.classList.toggle('is-negative', /-\s*\d/.test(el.textContent));
+  document.querySelectorAll(sel).forEach(el => {
+    paint(el);
+    new MutationObserver(() => paint(el)).observe(el, { childList: true, characterData: true, subtree: true });
+  });
+})();
 // Failsafe: garante que o splash nunca fique preso na tela (ex: erro de rede/CDN)
 setTimeout(hideSplashScreen, 5000);
 </script>
