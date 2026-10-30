@@ -3059,6 +3059,8 @@ const EXPENSE_TYPES = ['Variável', 'Fixo Mensal'];
 
 // ── Firebase sync
 let _fbReady = false;
+let _fbLoaded = false;      // true só depois do primeiro pull — evita sobrescrever a nuvem com dados velhos
+let _pendingPush = false;
 let _syncTimeout = null;
 
 function save(key, val) {
@@ -3086,6 +3088,7 @@ function ensureDasCost() {
 ensureDasCost();
 
 function scheduleFbSync() {
+  if (!_fbLoaded) { _pendingPush = true; return; }
   clearTimeout(_syncTimeout);
   _syncTimeout = setTimeout(pushToFirebase, 800);
 }
@@ -3101,10 +3104,10 @@ function handleFirebaseDenied(e) {
 }
 
 async function pushToFirebase() {
-  if (!window._db || !window._user) return;
+  if (!window._db || !window._user || !_fbLoaded) return;
   try {
     await window._setDoc(window._doc(window._db, 'store', 'data'), {
-      filaments, packaging, marginAlerts, monthlyGoal, recurringCosts, priceHistory, wasteRate, products, sales, expenses, shopeeFeeTiers,
+      filaments, packaging, marginAlerts, monthlyGoal, recurringCosts, priceHistory, wasteRate, lastAutoLaunch, products, sales, expenses, shopeeFeeTiers,
       updatedAt: new Date().toISOString()
     });
     showSyncStatus('<i class="ti ti-circle-check ic"></i> Sincronizado', 'var(--green)');
@@ -3136,6 +3139,9 @@ async function pullFromFirebase() {
       priceHistory   = data.priceHistory   || priceHistory;
       wasteRate      = data.wasteRate      || wasteRate;
       shopeeFeeTiers = data.shopeeFeeTiers || shopeeFeeTiers;
+      // Mês do último lançamento automático de custos fixos — compartilhado entre aparelhos
+      lastAutoLaunch = data.lastAutoLaunch || lastAutoLaunch;
+      saveLocal('pl_last_auto_launch', lastAutoLaunch);
       saveLocal('pl_filaments',        filaments);
       saveLocal('pl_packaging',        packaging);
       saveLocal('pl_products',         products);
@@ -3147,37 +3153,41 @@ async function pullFromFirebase() {
       saveLocal('pl_price_history',    priceHistory);
       saveLocal('pl_waste_rate',       wasteRate);
       saveLocal('pl_shopee_fee_tiers', shopeeFeeTiers);
+      // Edições locais feitas antes do carregamento foram substituídas pela nuvem
+      _pendingPush = false;
       // Reaplica o DAS do MEI caso o estado vindo do Firebase ainda não o tenha
       // (ex: primeiro carregamento no celular da sua esposa).
       ensureDasCost();
-      // Re-render current page (only after Chart.js is ready)
-      const activePage = document.querySelector('.page.active');
-      if (activePage) {
-        const pageId = activePage.id.replace('page-', '');
-        const rerender = () => {
-          if (pageId === 'dashboard') renderDashboard();
-          if (pageId === 'products')  renderProducts();
-          if (pageId === 'sales')     renderSales();
-          if (pageId === 'settings')  renderSettings();
-        };
-        if (pageId === 'dashboard' && !window._chartReady) {
-          // Wait for Chart.js then render
-          const orig = window.tryInit;
-          window.tryInit = () => { orig && orig(); rerender(); window.tryInit = orig; };
-        } else {
-          rerender();
-        }
-      }
+      // Doc antigo sem lastAutoLaunch → envia de volta para gravar o campo
+      onFirebaseLoaded(data.lastAutoLaunch === undefined || _pendingPush);
+      rerenderActivePage();
       showSyncStatus('<i class="ti ti-circle-check ic"></i> Dados carregados', 'var(--green)');
     } else {
       // No data in Firebase yet — push local data
-      await pushToFirebase();
+      onFirebaseLoaded(true);
     }
   } catch(e) {
     if (handleFirebaseDenied(e)) return;
+    // Offline: segue com os dados locais e libera o salvamento
+    onFirebaseLoaded(_pendingPush);
     showSyncStatus('<i class="ti ti-alert-triangle ic"></i> Offline', 'var(--yellow)');
     console.error('Firebase pull error:', e);
   }
+}
+
+// Chamado uma vez por login, depois do primeiro pull (com sucesso ou offline)
+function onFirebaseLoaded(needsPush) {
+  if (_fbLoaded) return;
+  _fbLoaded = true;
+  _pendingPush = false;
+  checkAutoLaunch();
+  if (needsPush) scheduleFbSync();
+}
+
+function rerenderActivePage() {
+  if (typeof Chart === 'undefined') return; // tryInit vai renderizar quando o Chart.js carregar
+  const activePage = document.querySelector('.page.active');
+  if (activePage) renderPage(activePage.id.replace('page-', ''));
 }
 
 function showSyncStatus(msg, color) {
@@ -3195,6 +3205,7 @@ function showSyncStatus(msg, color) {
 // Init Firebase when ready
 window.addEventListener('firebaseReady', () => {
   _fbReady = true;
+  _fbLoaded = false; // novo login: só envia depois de carregar os dados desta conta
   pullFromFirebase();
 });
 // If already ready (e.g. cached)
@@ -3993,6 +4004,10 @@ function navigate(page) {
     }
   }
 
+  renderPage(page);
+}
+
+function renderPage(page) {
   if (page === 'home')      renderHome();
   if (page === 'dashboard') renderDashboard();
   if (page === 'products')  renderProducts();
@@ -7910,9 +7925,12 @@ function importShopee(event) {
 
       let imported = 0, skipped = 0, deadlineUpdated = 0, statusUpdated = 0, notFound = [];
       const newSales = [];
-      // Chave composta: pedido + variação + sku para não descartar variações diferentes do mesmo pedido
+      // Chave composta: pedido + variação + sku + produto, para não descartar variações nem
+      // produtos diferentes do mesmo pedido (ex: dois anúncios sem variação/SKU no mesmo pedido)
       const makeKey = (s) => (s.shopeeOrderId || '') + '|' + (s._variationName || '') + '|' + (s._skuRef || '');
-      const existingIds = new Set(sales.map(makeKey).filter(k => k !== '||'));
+      const makeFullKey = (s) => makeKey(s) + '|' + (s.productId || '');
+      const importedSales = sales.filter(s => s.shopeeOrderId);
+      const existingIds = new Set(importedSales.map(makeFullKey));
 
       // Baixa automática (ver mais abaixo) — conta quantos pedidos existentes foram
       // marcados como produzido+postado porque o STATUS importado da Shopee (não a
@@ -8035,13 +8053,20 @@ function importShopee(event) {
         const shipDeadlineDate = shipParts[0] || null;
         const shipDeadlineTime = shipParts[1] || null;
 
-        // Chave composta para deduplicação (pedido + variação + sku)
-        const dedupKey = orderId + '|' + variationName + '|' + skuRef;
-        // Pula se já importado (mesma combinação pedido+variação) — mas atualiza dados que mudaram
+        // Tenta encontrar o produto no sistema (considerando a variação)
+        const product = findProductByName(productName, variationName);
+
+        // Chave composta para deduplicação (pedido + variação + sku + produto).
+        // Sem produto cadastrado, cai na chave antiga (pedido + variação + sku).
+        const baseKey  = orderId + '|' + variationName + '|' + skuRef;
+        const dedupKey = product ? baseKey + '|' + product.id : null;
+        const existingSale = product
+          ? (existingIds.has(dedupKey) ? importedSales.find(s => makeFullKey(s) === dedupKey) : null)
+          : importedSales.find(s => makeKey(s) === baseKey);
+        // Pula se já importado — mas atualiza dados que mudaram
         // desde a última importação: status do pedido (essencial pra saber quem já foi
         // despachado/entregue) e data-limite de envio (quando ainda não tinha).
-        if (existingIds.has(dedupKey)) {
-          const existingSale = sales.find(s => (s.shopeeOrderId||'') + '|' + (s._variationName||'') + '|' + (s._skuRef||'') === dedupKey);
+        if (existingSale || (dedupKey && existingIds.has(dedupKey))) {
           if (existingSale) {
             const newStatus = row['Status do pedido'] || '';
             if (newStatus && existingSale.shopeeStatus !== newStatus) {
@@ -8079,8 +8104,6 @@ function importShopee(event) {
         const dateStr = dateParts[0] || localDateStr();
         const timeStr = dateParts[1] || null; // "16:15" — usado no mapa de calor por horário
 
-        // Tenta encontrar o produto no sistema (considerando a variação)
-        const product = findProductByName(productName, variationName);
         if (!product) {
           const displayName = variationName ? `${productName} (${variationName})` : productName;
           if (!notFound.includes(displayName)) notFound.push(displayName);
@@ -8248,8 +8271,7 @@ applyTheme(loadLocal('pl_theme', 'dark'));
 // Start — will retry until Chart.js is available
 tryInit();
 updateTopbarIssueTag();
-// Check auto-launch of recurring costs
-checkAutoLaunch();
+// Custos recorrentes são lançados em onFirebaseLoaded(), depois de carregar a nuvem
 // Failsafe: garante que o splash nunca fique preso na tela (ex: erro de rede/CDN)
 setTimeout(hideSplashScreen, 5000);
 </script>
