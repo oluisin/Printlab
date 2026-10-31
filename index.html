@@ -1153,6 +1153,12 @@
     }
     /* ── Recebimentos ── */
     #page-receipts { padding-bottom: 88px; }
+    #page-receipts .rc-mrow { display: grid; grid-template-columns: 1.1fr 1fr 1fr 1fr; gap: 8px; padding: 8px 0; border-bottom: 0.5px solid var(--border); font-size: 13px; align-items: center; }
+    #page-receipts .rc-mrow > span:not(:first-child) { text-align: right; justify-content: flex-end; }
+    #page-receipts .rc-mrow.head { font-size: 11px; color: var(--text3); text-transform: uppercase; letter-spacing: .04em; }
+    #page-receipts .rc-mrow.tot { font-weight: 600; border-bottom: none; }
+    #page-receipts .rc-mrow.sel { background: rgba(255,0,170,0.07); }
+    @media (max-width:768px) { #page-receipts .rc-mrow { font-size: 11.5px; gap: 4px; } }
     #page-receipts .rc-grid4 { grid-template-columns: repeat(4, 1fr); }
     #page-receipts .rc-ksub { font-size: 11px; color: var(--text3); margin-top: 6px; line-height: 1.4; }
     #page-receipts .rc-cols { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; margin-bottom: 16px; }
@@ -2131,7 +2137,7 @@
       </div>
       <div class="filter-bar">
         <select id="rc-month" onchange="onReceiptsMonthChange()"><option value="">Todos os meses</option></select>
-        <label class="btn-primary" style="cursor:pointer"><i class="ti ti-file-import ic"></i> Importar rendimento
+        <label class="btn-primary" style="cursor:pointer"><i class="ti ti-file-import ic"></i> Importar rendimento / saques
           <input type="file" id="rc-file" accept=".xlsx" multiple style="display:none" onchange="importReceiptFiles(event)" />
         </label>
         <button class="btn-ghost" onclick="exportReceiptsXlsx()"><i class="ti ti-file-export ic"></i> Exportar XLSX</button>
@@ -2161,6 +2167,11 @@
         <div class="card"><div class="card-title">De onde saiu o dinheiro</div><div id="rc-breakdown"></div></div>
         <div class="card"><div class="card-title">O painel × o que a Shopee liberou</div><div id="rc-compare"></div>
           <div class="card-title" style="margin-top:22px">Relatórios importados</div><div id="rc-periods"></div></div>
+      </div>
+
+      <div class="card" style="margin-bottom:16px">
+        <div class="card-title">Liberado × sacado por mês</div>
+        <div id="rc-monthly"></div>
       </div>
 
       <div class="rc-cols">
@@ -7526,6 +7537,45 @@ function rcMonthLabel(ym) {
   const [y, m] = ym.split('-'); return nomes[parseInt(m, 10) - 1] + '/' + y.slice(2);
 }
 
+// ── lê o histórico de saques da carteira (Central do Vendedor > Saldo da Carteira)
+// Retorna null se o arquivo não for de saques. Só entram os "Concluído"; "Falha e reembolsada" volta ao saldo.
+function parseWithdrawalsWorkbook(wb) {
+  const rowsOf = ws => XLSX.utils.sheet_to_json(ws, { header: 1, defval: '', raw: true });
+  for (const name of wb.SheetNames) {
+    const rows = rowsOf(wb.Sheets[name]);
+    for (let i = 0; i < Math.min(rows.length, 10); i++) {
+      const h = rows[i].map(rcNorm);
+      const iDate = h.indexOf('data'), iVal = h.findIndex(x => x.startsWith('valor sacado'));
+      if (iDate < 0 || iVal < 0) continue;
+      const iSt = h.indexOf('status'), iDest = h.findIndex(x => x.startsWith('conta de destino')), iTx = h.findIndex(x => x.startsWith('id da transac'));
+      const out = { items: [], failed: 0, failedTotal: 0, other: 0 };
+      for (let k = i + 1; k < rows.length; k++) {
+        const row = rows[k];
+        const raw = row[iDate];
+        let date = '';
+        if (typeof raw === 'number' && raw > 20000) { const d = new Date(Math.round((raw - 25569) * 86400000)); date = d.getUTCFullYear() + '-' + String(d.getUTCMonth() + 1).padStart(2, '0') + '-' + String(d.getUTCDate()).padStart(2, '0'); }
+        else date = rcDate(raw);
+        const value = rc2(rcNum(row[iVal]));
+        if (!date || !(value > 0)) continue;
+        const status = iSt >= 0 ? rcNorm(row[iSt]) : 'concluido';
+        if (status.startsWith('falha') || status.startsWith('cancel') || status.startsWith('reembols')) { out.failed++; out.failedTotal = rc2(out.failedTotal + value); continue; }
+        if (!status.startsWith('conclu')) { out.other++; continue; }
+        const tx = iTx >= 0 ? String(row[iTx] == null ? '' : row[iTx]).trim() : '';
+        const dest = iDest >= 0 ? String(row[iDest] || '').trim() : '';
+        out.items.push({ id: tx ? 'tx' + tx : 'wd' + date + '-' + value, txId: tx, date, value, note: dest.slice(0, 60) });
+      }
+      if (out.items.length || out.failed) return out;
+    }
+  }
+  return null;
+}
+function mergeWithdrawals(items) {
+  const have = new Set(withdrawals.map(w => w.id));
+  let added = 0, dup = 0;
+  items.forEach(w => { if (have.has(w.id)) { dup++; return; } have.add(w.id); withdrawals.push(w); added++; });
+  return { added, dup };
+}
+
 // ── lê o workbook do relatório de rendimento
 function parseIncomeWorkbook(wb, fileName) {
   const rowsOf = ws => XLSX.utils.sheet_to_json(ws, { header: 1, defval: '', raw: true });
@@ -7668,7 +7718,12 @@ function importReceiptFiles(event) {
   const readOne = f => new Promise(res => {
     const rd = new FileReader();
     rd.onload = e => {
-      try { res({ file: f.name, parsed: parseIncomeWorkbook(XLSX.read(e.target.result, { type: 'array' }), f.name) }); }
+      try {
+        const wb = XLSX.read(e.target.result, { type: 'array' });
+        const wd = parseWithdrawalsWorkbook(wb);
+        if (wd) res({ file: f.name, withdrawals: wd });
+        else res({ file: f.name, parsed: parseIncomeWorkbook(wb, f.name) });
+      }
       catch (err) { res({ file: f.name, error: err.message }); }
     };
     rd.onerror = () => res({ file: f.name, error: 'Não consegui ler o arquivo.' });
@@ -7677,9 +7732,17 @@ function importReceiptFiles(event) {
 
   Promise.all(files.map(readOne)).then(results => {
     const lines = [];
-    let hadError = false, warn = false, lastMonth = null;
+    let hadError = false, warn = false, lastMonth = null, gotWd = false;
     results.forEach(r => {
       if (r.error) { hadError = true; lines.push('✖ <strong>' + rcEsc(r.file) + '</strong>: ' + rcEsc(r.error)); return; }
+      if (r.withdrawals) {
+        const w = r.withdrawals, m = mergeWithdrawals(w.items);
+        gotWd = true;
+        lines.push('✔ <strong>Saques</strong>: ' + m.added + ' novo(s) (' + fmt(rc2(w.items.reduce((a, x) => a + x.value, 0))) + ' no arquivo)' +
+          (m.dup ? ', ' + m.dup + ' já estavam na lista' : '') +
+          (w.failed ? ' · ' + w.failed + ' falha(s) reembolsada(s) de ' + fmt(w.failedTotal) + ' ignorada(s), pois voltaram ao saldo' : ''));
+        return;
+      }
       const p = r.parsed;
       mergeIncomeReport(p);
       lastMonth = (p.receipts.map(x => x.releaseDate).filter(Boolean).sort().pop() || p.to).slice(0, 7);
@@ -7900,10 +7963,32 @@ function renderReceipts() {
   const relAll = rc2(receipts.reduce((s, r) => s + r.released, 0));
   const adjAllTotal = rc2(adjAll.reduce((s, a) => s + a.value, 0));
   const firstFrom = per.length ? per[per.length - 1].from : '';
-  $('rc-wd-list').innerHTML = wd.length ? wd.map(w =>
+  $('rc-wd-list').style.cssText = 'margin-top:12px;max-height:320px;overflow-y:auto';
+  const wdMonth = _rcMonthChoice ? rc2(withdrawals.filter(w => w.date.startsWith(_rcMonthChoice)).reduce((x, w) => x + w.value, 0)) : null;
+  const wdMonthN = _rcMonthChoice ? withdrawals.filter(w => w.date.startsWith(_rcMonthChoice)).length : 0;
+  const wdHead = wdMonth != null ? '<div class="rc-line" style="font-weight:600"><span>Sacado em ' + rcMonthLabel(_rcMonthChoice) + ' (' + wdMonthN + ')</span><span class="rc-val">' + fmt(wdMonth) + '</span></div>' : '';
+  $('rc-wd-list').innerHTML = wdHead + (wd.length ? wd.map(w =>
     '<div class="rc-line"><span>' + rcFmtDate(w.date) + (w.note ? ' · ' + rcEsc(w.note) : '') + '</span><span class="rc-val">' + fmt(w.value) +
     ' <button class="btn-icon" onclick="removeWithdrawal(\'' + w.id + '\')"><i class="ti ti-trash ic"></i></button></span></div>').join('')
-    : '<div style="font-size:12px;color:var(--text3)">Nenhum saque registrado.</div>';
+    : '<div style="font-size:12px;color:var(--text3)">Nenhum saque registrado.</div>');
+  // liberado × sacado por mês (acumula o saldo mês a mês)
+  const mm = {};
+  const mget = k => mm[k] || (mm[k] = { rel: 0, wd: 0, n: 0 });
+  receipts.forEach(x => { if (x.releaseDate) mget(x.releaseDate.slice(0, 7)).rel += x.released; });
+  adjAll.forEach(a => { if (a.date) mget(a.date.slice(0, 7)).rel += a.value; });
+  withdrawals.forEach(w => { const m = mget(w.date.slice(0, 7)); m.wd += w.value; m.n++; });
+  const mKeys = Object.keys(mm).sort();
+  let acc = 0, tRel = 0, tWd = 0;
+  const mRows = mKeys.map(k => {
+    const m = mm[k]; acc = rc2(acc + m.rel - m.wd); tRel += m.rel; tWd += m.wd;
+    return '<div class="rc-mrow' + (k === _rcMonthChoice ? ' sel' : '') + '"><span>' + rcMonthLabel(k) + (m.n ? ' <small style="color:var(--text3)">(' + m.n + ' saq.)</small>' : '') + '</span><span class="rc-val">' + fmt(rc2(m.rel)) +
+      '</span><span class="rc-val" style="color:' + (m.wd ? 'var(--text)' : 'var(--text3)') + '">' + fmt(rc2(m.wd)) + '</span><span class="rc-val" style="color:' + (acc < -0.005 ? '#f87171' : 'var(--text2)') + '">' + fmt(acc) + '</span></div>';
+  });
+  $('rc-monthly').innerHTML = mKeys.length
+    ? '<div class="rc-mrow head"><span>Mês</span><span>Liberado</span><span>Sacado</span><span>Saldo no fim</span></div>' + mRows.join('') +
+      '<div class="rc-mrow tot"><span>Total</span><span class="rc-val">' + fmt(rc2(tRel)) + '</span><span class="rc-val">' + fmt(rc2(tWd)) + '</span><span class="rc-val">' + fmt(acc) + '</span></div>' +
+      '<div style="font-size:11px;color:var(--text3);margin-top:8px;line-height:1.5">Liberado = valor que entrou na carteira da Shopee no mês (com ajustes). Sacado = o que você enviou ao Mercado Pago. O saldo do fim do mês é o que sobrou na carteira; um mês só fica certo se todos os relatórios anteriores estiverem importados.</div>'
+    : '';
   $('rc-balance').innerHTML =
     line('Liberado (todos os relatórios importados)', relAll, false, null) +
     (adjAllTotal ? line('Ajustes', adjAllTotal, false, null) : '') +
