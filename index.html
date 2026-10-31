@@ -2198,17 +2198,17 @@
         <div style="text-align:center;padding:12px;background:var(--bg3);border-radius:8px">
           <div style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px">Renda Média/Pedido</div>
           <div style="font-size:20px;font-weight:700;color:#34d399" id="an-avg-shopee-income">—</div>
-          <div style="font-size:11px;color:var(--text3);margin-top:3px">valor real Shopee</div>
+          <div id="an-income-sub" style="font-size:11px;color:var(--text3);margin-top:3px">valor real Shopee</div>
         </div>
         <div style="text-align:center;padding:12px;background:var(--bg3);border-radius:8px">
           <div style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px">Taxa Média Real</div>
           <div style="font-size:20px;font-weight:700;color:var(--yellow)" id="an-avg-fee-rate">—</div>
-          <div style="font-size:11px;color:var(--text3);margin-top:3px">vs estimativa 20%</div>
+          <div id="an-fee-sub" style="font-size:11px;color:var(--text3);margin-top:3px">taxa real efetiva</div>
         </div>
         <div style="text-align:center;padding:12px;background:var(--bg3);border-radius:8px">
           <div style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px">Margem Real Média</div>
           <div style="font-size:20px;font-weight:700;color:var(--green)" id="an-real-margin-avg">—</div>
-          <div style="font-size:11px;color:var(--text3);margin-top:3px">com dados do XLSX</div>
+          <div id="an-margin-sub" style="font-size:11px;color:var(--text3);margin-top:3px">com dados do XLSX</div>
         </div>
       </div>
     </div>
@@ -3913,6 +3913,24 @@ function calcProfitTotal(p, price, qty, shopeeIncome, overrideGrams) {
   return { totalRevenue, totalCosts, totalProfit, prodCost, totalFees, margin, wasteCost };
 }
 
+// ── Renda da Shopee: UMA regra só, usada em Dashboard, Vendas e Análise ──
+// Antes cada tela tinha sua própria estimativa fixa (20% + R$ 4,49) que ignorava a tabela de
+// faixas e a taxa própria do produto — o lucro (calcProfitTotal) e a coluna "renda" podiam divergir.
+// estimateShopeeIncome usa exatamente as mesmas taxas (getProductFees) do cálculo de lucro estimado.
+// A taxa fixa por item (itemFee) e a de devolução valem por PEDIDO, igual ao calcProfitTotal/calcCost.
+function estimateShopeeIncome(p, price, qty) {
+  qty = qty || 1;
+  const f = getProductFees(p, price);
+  const revenue = price * qty;
+  const fees = revenue * (f.commission + f.transaction) + f.itemFee + f.devolFee;
+  return Math.max(0, revenue - fees);
+}
+function hasRealShopeeIncome(s) { return s._shopeeTotal > 0; }
+// Renda real (XLSX) quando existe; senão a estimativa. p pode ser undefined (usa as taxas padrão).
+function getSaleShopeeIncome(s, p) {
+  return hasRealShopeeIncome(s) ? s._shopeeTotal : estimateShopeeIncome(p, s.salePrice, s.qty);
+}
+
 // Moeda no padrão brasileiro: R$ 1.136,18 (espaço fixo para "R$" não quebrar do número)
 const _brl = new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 function fmt(n) { return 'R$ ' + _brl.format(n || 0); }
@@ -4113,10 +4131,19 @@ function renderPage(page) {
 // ══════════════════════════════════════════
 let chartMonthly, chartProducts, chartUnits;
 
-const chartDefaults = {
-  color: '#A79EB8',
-  font: { family: "'Inter', sans-serif", size: 12 },
-};
+// O Chart.js desenha em <canvas> e NÃO entende var(--x) do CSS: uma cor "var(--text3)" é ignorada
+// e o texto dos eixos some (escuro sobre escuro). cssVar() lê o valor já resolvido do tema atual,
+// então os gráficos acompanham tema claro/escuro e a paleta.
+function cssVar(name, fallback) {
+  try {
+    const v = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+    return v || fallback;
+  } catch (e) { return fallback; }
+}
+// Estilo padrão dos rótulos de eixo — chame na hora de montar o gráfico (não guarde em const global).
+function chartTickStyle(size) {
+  return { color: cssVar('--text2', '#A79EB8'), font: { family: "'Inter', sans-serif", size: size || 12 } };
+}
 
 // Estado do filtro de período do Dashboard — array de "YYYY-MM".
 // Vazio = todos os períodos. Suporta selecionar meses não-contíguos (tipo filtro do Excel).
@@ -4223,18 +4250,12 @@ function renderDashboard() {
     byProduct[s.productId].rev += r;
   });
 
-  // Renda Shopee = soma do _shopeeTotal de pedidos importados
-  // Para pedidos manuais, estima = receita - taxas shopee calculadas
+  // Renda Shopee = _shopeeTotal dos pedidos importados; nos demais, estimativa com as taxas
+  // cadastradas (getSaleShopeeIncome). Só entram vendas de produtos existentes, a mesma base da receita acima.
   let shopeeIncome = 0;
   filteredSales.forEach(s => {
-    if (s._shopeeTotal && s._shopeeTotal > 0) {
-      shopeeIncome += s._shopeeTotal;
-    } else {
-      // Pedido manual: estima renda = preço × qty - taxas fixas - comissão
-      const commission = s.salePrice * (0.18 + 0.02) * s.qty;
-      const fixed = 4.49; // item fee + devol
-      shopeeIncome += Math.max(0, s.salePrice * s.qty - commission - fixed);
-    }
+    const p = products.find(x => x.id === s.productId); if (!p) return;
+    shopeeIncome += getSaleShopeeIncome(s, p);
   });
 
   animateCountCurrency(document.getElementById('kpi-revenue'), rev, 700);
@@ -4349,7 +4370,7 @@ function renderDashboard() {
         { label: 'Lucro',   data: months.map(m => +m.profit.toFixed(2)), borderColor: '#00FFB3', backgroundColor: 'rgba(0,255,179,0.08)', borderWidth: 2.5, pointRadius: 3, tension: 0.3, fill: true },
       ]
     },
-    options: { responsive: true, maintainAspectRatio: true, aspectRatio: 2, plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => fmt(ctx.raw) } } }, scales: { x: { ticks: chartDefaults, grid: { color: 'rgba(255,255,255,0.06)' } }, y: { ticks: { ...chartDefaults, callback: fmtAxis }, grid: { color: 'rgba(255,255,255,0.06)' } } } }
+    options: { responsive: true, maintainAspectRatio: true, aspectRatio: 2, plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => fmt(ctx.raw) } } }, scales: { x: { ticks: chartTickStyle(), grid: { color: 'rgba(255,255,255,0.06)' } }, y: { ticks: { ...chartTickStyle(), callback: fmtAxis }, grid: { color: 'rgba(255,255,255,0.06)' } } } }
   });
 
   // Highlight selected month in units chart
@@ -4365,7 +4386,7 @@ function renderDashboard() {
       labels: topProds.map(p => p.name.length > 14 ? p.name.slice(0,13).trim()+'…' : p.name),
       datasets: [{ label: 'Receita', data: topProds.map(p => +p.rev.toFixed(2)), backgroundColor: barColors, borderRadius: 5 }]
     },
-    options: { indexAxis: 'y', responsive: true, maintainAspectRatio: true, aspectRatio: 1.6, plugins: { legend: { display: false }, tooltip: { callbacks: { title: items => topProds[items[0].dataIndex].name, label: ctx => fmt(ctx.raw) } } }, scales: { x: { ticks: { ...chartDefaults, callback: fmtAxis }, grid: { color: 'rgba(255,255,255,0.06)' } }, y: { ticks: chartDefaults, grid: { display: false } } } }
+    options: { indexAxis: 'y', responsive: true, maintainAspectRatio: true, aspectRatio: 1.6, plugins: { legend: { display: false }, tooltip: { callbacks: { title: items => topProds[items[0].dataIndex].name, label: ctx => fmt(ctx.raw) } } }, scales: { x: { ticks: { ...chartTickStyle(), callback: fmtAxis }, grid: { color: 'rgba(255,255,255,0.06)' } }, y: { ticks: chartTickStyle(), grid: { display: false } } } }
   });
 
   // Units bar
@@ -4381,7 +4402,7 @@ function renderDashboard() {
         borderRadius: 4
       }]
     },
-    options: { responsive: true, maintainAspectRatio: true, aspectRatio: 3.5, plugins: { legend: { display: false } }, scales: { x: { ticks: chartDefaults, grid: { color: 'rgba(255,255,255,0.06)' } }, y: { ticks: chartDefaults, grid: { color: 'rgba(255,255,255,0.06)' } } } }
+    options: { responsive: true, maintainAspectRatio: true, aspectRatio: 3.5, plugins: { legend: { display: false } }, scales: { x: { ticks: chartTickStyle(), grid: { color: 'rgba(255,255,255,0.06)' } }, y: { ticks: chartTickStyle(), grid: { color: 'rgba(255,255,255,0.06)' } } } }
   });
 }
 
@@ -4709,11 +4730,7 @@ function renderSales() {
     rev    += s.salePrice * s.qty;
     profit += calcProfitTotal(p, s.salePrice, s.qty, s._shopeeTotal, getVariationGrams(p, s.variationName)).totalProfit;
     units  += s.qty;
-    if (s._shopeeTotal && s._shopeeTotal > 0) {
-      shopeeIncomeSales += s._shopeeTotal;
-    } else {
-      shopeeIncomeSales += Math.max(0, s.salePrice * s.qty - s.salePrice * 0.20 * s.qty - 4.49);
-    }
+    shopeeIncomeSales += getSaleShopeeIncome(s, p);
   });
 
   document.getElementById('sales-rev').textContent    = fmt(rev);
@@ -4735,14 +4752,8 @@ function renderSales() {
     const [y,mo,d] = s.date.split('-');
     const tr = document.createElement('tr');
     // Renda Shopee por pedido
-    let shopeeIncomeRow = 0;
-    if (s._shopeeTotal && s._shopeeTotal > 0) {
-      shopeeIncomeRow = s._shopeeTotal;
-    } else {
-      const comm = s.salePrice * 0.20 * s.qty;
-      shopeeIncomeRow = Math.max(0, s.salePrice * s.qty - comm - 4.49);
-    }
-    const shopeeTag = s._shopeeTotal ? '' : ' <span style="font-size:9px;opacity:0.5">~est.</span>';
+    const shopeeIncomeRow = getSaleShopeeIncome(s, p);
+    const shopeeTag = hasRealShopeeIncome(s) ? '' : ' <span style="font-size:9px;opacity:0.5">~est.</span>';
 
     tr.dataset.id = s.id;
     tr.innerHTML = `
@@ -5059,7 +5070,7 @@ function applyTheme(theme) {
 
   // Update Chart.js defaults for light theme
   const gridColor  = isLight ? '#dde1ee' : '#1e1e30';
-  const tickColor  = isLight ? '#9399b8' : 'var(--text3)';
+  const tickColor  = cssVar('--text2', isLight ? '#5a5f7a' : '#A79EB8');
   if (typeof Chart !== 'undefined') {
     Chart.defaults.color = tickColor;
     Chart.defaults.borderColor = gridColor;
@@ -5978,7 +5989,7 @@ function renderProjection() {
   });
 
   // ── Chart
-  const chartDefaults = { color: 'var(--text3)', font: { family: "'Inter',sans-serif", size: 11 } };
+  const chartDefaults = chartTickStyle(11);
   const allLabels = [...sortedMonths.map(m => fmtMonth(m + '-01')), ...projectedData.map(d => d.label)];
   const histLen   = sortedMonths.length;
 
@@ -6910,7 +6921,7 @@ function renderSeasonality() {
   document.getElementById('sn-heatmap').innerHTML = heatmap;
 
   // ── Monthly trend chart
-  const chartDefaults = { color: 'var(--text3)', font: { family: "'Inter',sans-serif", size: 11 } };
+  const chartDefaults = chartTickStyle(11);
   const COLORS = ['#FF00AA','#00DCFF','#FFC800','#A855F7','#00FFB3','#FF6B9D','#7C3AED','#38BDF8'];
 
   if (_snChartTrend) _snChartTrend.destroy();
@@ -6932,7 +6943,7 @@ function renderSeasonality() {
     options: {
       responsive: true, maintainAspectRatio: true, aspectRatio: 1.8,
       plugins: {
-        legend: { position: 'bottom', labels: { color: 'var(--text2)', font: { size: 11 }, boxWidth: 12, padding: 12 } },
+        legend: { position: 'bottom', labels: { color: cssVar('--text2', '#A79EB8'), font: { size: 11 }, boxWidth: 12, padding: 12 } },
         tooltip: { callbacks: { label: ctx => ctx.dataset.label + ': ' + fmtVal(ctx.raw) } }
       },
       scales: {
@@ -6953,7 +6964,7 @@ function renderSeasonality() {
     options: {
       responsive: true, maintainAspectRatio: true, aspectRatio: 1.6,
       plugins: {
-        legend: { position: 'right', labels: { color: 'var(--text2)', font: { size: 11 }, boxWidth: 12, padding: 8 } },
+        legend: { position: 'right', labels: { color: cssVar('--text2', '#A79EB8'), font: { size: 11 }, boxWidth: 12, padding: 8 } },
         tooltip: { callbacks: { label: ctx => ctx.label + ': ' + fmtVal(ctx.raw) } }
       }
     }
@@ -7163,42 +7174,55 @@ function renderAnalysis() {
   }
 
   // KPIs
-  let units=0, revenue=0, profit=0, shopeeIncome=0;
+  // Lucro e receita somam todas as vendas (reais e estimadas). Os indicadores de "valor real" abaixo
+  // usam SOMENTE as vendas com valor vindo do XLSX, na mesma base (receita, renda, taxa e margem).
+  let units=0, revenue=0, profit=0;
+  const real = { n: 0, rev: 0, income: 0, profit: 0, estIncome: 0 };
   prodSales.forEach(s => {
+    const rev = s.salePrice * s.qty;
+    const pr  = calcProfitTotal(p, s.salePrice, s.qty, s._shopeeTotal, getVariationGrams(p, s.variationName)).totalProfit;
     units   += s.qty;
-    revenue += s.salePrice * s.qty;
-    profit  += calcProfitTotal(p, s.salePrice, s.qty, s._shopeeTotal, getVariationGrams(p, s.variationName)).totalProfit;
-    shopeeIncome += s._shopeeTotal > 0 ? s._shopeeTotal : Math.max(0, s.salePrice * s.qty - s.salePrice * 0.20 * s.qty - 4.49);
+    revenue += rev;
+    profit  += pr;
+    if (hasRealShopeeIncome(s)) {
+      real.n++;
+      real.rev       += rev;
+      real.income    += s._shopeeTotal;
+      real.profit    += pr;
+      real.estIncome += estimateShopeeIncome(p, s.salePrice, s.qty); // o que a estimativa diria p/ as mesmas vendas
+    }
   });
+  const estimatedCount = prodSales.length - real.n;
   const margin = revenue > 0 ? (profit/revenue*100) : 0;
   const avgPrice = units > 0 ? revenue/units : 0;
 
   document.getElementById('an-units').textContent     = units;
   document.getElementById('an-revenue').textContent   = fmt(revenue);
   document.getElementById('an-profit').textContent    = fmt(profit);
-  document.getElementById('an-margin').textContent    = 'Margem: ' + margin.toFixed(1) + '%';
+  document.getElementById('an-margin').textContent    = 'Margem: ' + margin.toFixed(1) + '%' +
+    (estimatedCount > 0 ? ' · ' + estimatedCount + ' venda(s) estimada(s)' : '');
   document.getElementById('an-avg-price').textContent = fmt(avgPrice);
 
-  // Real vs estimated
-  const importedSales = prodSales.filter(s => s._shopeeTotal > 0);
-  if (importedSales.length > 0) {
-    const avgIncome = shopeeIncome / prodSales.length;
-    const avgFeeRate = importedSales.reduce((sum,s) => {
-      const rev = s.salePrice * s.qty;
-      return sum + (rev - s._shopeeTotal) / rev;
-    }, 0) / importedSales.length;
-    const realMarginAvg = importedSales.reduce((sum,s) => {
-      const pr = calcProfitTotal(p, s.salePrice, s.qty, s._shopeeTotal, getVariationGrams(p, s.variationName)).totalProfit;
-      return sum + pr / (s.salePrice * s.qty);
-    }, 0) / importedSales.length;
+  // Real vs estimado — médias PONDERADAS (total ÷ total), não média das taxas de cada pedido:
+  // o valor fixo por item pesa mais nos pedidos baratos, e a média simples distorceria isso.
+  const setTxt = (id, txt) => { const el = document.getElementById(id); if (el) el.textContent = txt; };
+  if (real.n > 0 && real.rev > 0) {
+    const avgIncome    = real.income / real.n;                         // renda real por pedido
+    const feeRate      = (real.rev - real.income) / real.rev;          // taxa real efetiva
+    const estFeeRate   = (real.rev - real.estIncome) / real.rev;       // taxa que a estimativa previa p/ as mesmas vendas
+    const realMargin   = real.profit / real.rev;
 
-    document.getElementById('an-avg-shopee-income').textContent = fmt(avgIncome);
-    document.getElementById('an-avg-fee-rate').textContent      = (avgFeeRate*100).toFixed(1) + '%';
-    document.getElementById('an-real-margin-avg').textContent   = (realMarginAvg*100).toFixed(1) + '%';
+    setTxt('an-avg-shopee-income', fmt(avgIncome));
+    setTxt('an-avg-fee-rate',      (feeRate*100).toFixed(1) + '%');
+    setTxt('an-real-margin-avg',   (realMargin*100).toFixed(1) + '%');
+    setTxt('an-income-sub', real.n + ' de ' + prodSales.length + ' vendas com valor real');
+    setTxt('an-fee-sub',    'estimativa p/ as mesmas vendas: ' + (estFeeRate*100).toFixed(1) + '%');
+    setTxt('an-margin-sub', 'ponderada · ' + real.n + ' de ' + prodSales.length + ' vendas com valor real');
   } else {
-    ['an-avg-shopee-income','an-avg-fee-rate','an-real-margin-avg'].forEach(id => {
-      document.getElementById(id).textContent = '—';
-    });
+    ['an-avg-shopee-income','an-avg-fee-rate','an-real-margin-avg'].forEach(id => setTxt(id, '—'));
+    setTxt('an-income-sub', 'nenhuma venda com valor real neste período');
+    setTxt('an-fee-sub',    'importe o XLSX da Shopee para ver');
+    setTxt('an-margin-sub', 'importe o XLSX da Shopee para ver');
   }
 
   // Monthly chart data
@@ -7211,7 +7235,7 @@ function renderAnalysis() {
   });
   const months = Object.values(byMonth).sort((a,b) => a.key < b.key ? -1 : 1);
 
-  const chartDefaults = { color: 'var(--text3)', font: { family: "'Inter',sans-serif", size: 11 } };
+  const chartDefaults = chartTickStyle(11);
 
   if (_anChartMonthly) _anChartMonthly.destroy();
   _anChartMonthly = safeChart(document.getElementById('an-chart-monthly'), {
@@ -7230,9 +7254,21 @@ function renderAnalysis() {
   });
 
   // Price evolution chart
-  const priceDates = [...prodSales].reverse().map(s => {
-    const [y,mo,d] = s.date.split('-');
-    return { label: d+'/'+mo, price: s.salePrice };
+  // Um ponto por DIA (preço médio ponderado pela quantidade), com o ano no rótulo.
+  // Antes era um ponto por venda: vários pedidos no mesmo dia com preços diferentes
+  // (promoção, cupom) faziam a linha subir e descer em serrote.
+  const priceByDay = {};
+  prodSales.forEach(s => {
+    const d = priceByDay[s.date] || (priceByDay[s.date] = { rev: 0, qty: 0, min: Infinity, max: -Infinity });
+    d.rev += s.salePrice * s.qty;
+    d.qty += s.qty;
+    d.min = Math.min(d.min, s.salePrice);
+    d.max = Math.max(d.max, s.salePrice);
+  });
+  const priceDates = Object.keys(priceByDay).sort().map(k => {
+    const [y,mo,d] = k.split('-');
+    const v = priceByDay[k];
+    return { label: d+'/'+mo+'/'+y.slice(2), price: v.rev / v.qty, qty: v.qty, min: v.min, max: v.max };
   });
 
   if (_anChartPrice) _anChartPrice.destroy();
@@ -7243,7 +7279,13 @@ function renderAnalysis() {
       datasets: [{ label: 'Preço', data: priceDates.map(x => x.price), borderColor: '#A855F7', backgroundColor: 'rgba(168,85,247,0.08)', borderWidth: 2, pointRadius: 3, tension: 0.3, fill: true }]
     },
     options: { responsive: true, maintainAspectRatio: true, aspectRatio: 2,
-      plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => fmt(ctx.raw) } } },
+      plugins: { legend: { display: false }, tooltip: { callbacks: {
+        label: ctx => 'Preço médio: ' + fmt(ctx.raw),
+        afterLabel: ctx => {
+          const d = priceDates[ctx.dataIndex];
+          return d.qty + ' un.' + (d.max - d.min > 0.005 ? ' · variou de ' + fmt(d.min) + ' a ' + fmt(d.max) : '');
+        },
+      } } },
       scales: { x: { ticks: chartDefaults, grid: { color: 'rgba(255,255,255,0.06)' } }, y: { ticks: { ...chartDefaults, callback: fmtAxis }, grid: { color: 'rgba(255,255,255,0.06)' } } }
     }
   });
@@ -7300,8 +7342,8 @@ function renderAnalysis() {
     const { totalProfit } = calcProfitTotal(p, s.salePrice, s.qty, s._shopeeTotal, getVariationGrams(p, s.variationName));
     const rev = s.salePrice * s.qty;
     const marg = rev > 0 ? (totalProfit/rev*100).toFixed(1) : 0;
-    const shopeeTag = s._shopeeTotal > 0 ? '' : ' <span style="font-size:9px;opacity:0.5">~est.</span>';
-    const income = s._shopeeTotal > 0 ? s._shopeeTotal : Math.max(0, rev - rev*0.20 - 4.49);
+    const shopeeTag = hasRealShopeeIncome(s) ? '' : ' <span style="font-size:9px;opacity:0.5">~est.</span>';
+    const income = getSaleShopeeIncome(s, p);
     const profitColor = totalProfit >= 0 ? 'var(--green)' : '#f87171';
     const tr = document.createElement('tr');
     tr.innerHTML = `
