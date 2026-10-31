@@ -1155,6 +1155,14 @@
     #page-receipts { padding-bottom: 88px; }
     #page-receipts .rc-mrow { display: grid; grid-template-columns: 1.1fr 1fr 1fr 1fr; gap: 8px; padding: 8px 0; border-bottom: 0.5px solid var(--border); font-size: 13px; align-items: center; }
     #page-receipts .rc-mrow > span:not(:first-child) { text-align: right; justify-content: flex-end; }
+    #page-receipts .rc-wdm { border-bottom: 0.5px solid var(--border); padding: 2px 0; }
+    #page-receipts .rc-wdm summary { display: flex; justify-content: space-between; align-items: center; cursor: pointer; padding: 10px 0; font-weight: 600; font-size: 14px; list-style: none; }
+    #page-receipts .rc-wdm summary::-webkit-details-marker { display: none; }
+    #page-receipts .rc-wdm summary::before { content: '▸'; color: var(--text3); margin-right: 8px; transition: transform .15s; display: inline-block; }
+    #page-receipts .rc-wdm[open] summary::before { transform: rotate(90deg); }
+    #page-receipts .rc-wdm summary > span:first-child { flex: 1; }
+    #page-receipts .rc-wdm summary small { font-weight: 400; color: var(--text3); }
+    #page-receipts .rc-wdm .rc-line { padding-left: 20px; }
     #page-receipts .rc-mrow.head { font-size: 11px; color: var(--text3); text-transform: uppercase; letter-spacing: .04em; }
     #page-receipts .rc-mrow.tot { font-weight: 600; border-bottom: none; }
     #page-receipts .rc-mrow.sel { background: rgba(255,0,170,0.07); }
@@ -2174,16 +2182,20 @@
         <div id="rc-monthly"></div>
       </div>
 
+      <div class="card" style="margin-bottom:16px">
+        <div class="card-title">Saques mês a mês, dia a dia</div>
+        <div id="rc-wd-list"></div>
+      </div>
+
       <div class="rc-cols">
         <div class="card">
-          <div class="card-title">Saques para o Mercado Pago</div>
+          <div class="card-title">Registrar saque manual</div>
           <div class="rc-wd-form">
             <input type="date" id="rc-wd-date" />
             <input type="number" id="rc-wd-value" step="0.01" min="0" placeholder="Valor (R$)" />
             <input type="text" id="rc-wd-note" maxlength="60" placeholder="Observação (opcional)" />
             <button class="btn-primary" onclick="addWithdrawal()">Registrar saque</button>
           </div>
-          <div id="rc-wd-list" style="margin-top:12px"></div>
         </div>
         <div class="card"><div class="card-title">Saldo na carteira da Shopee</div><div id="rc-balance"></div></div>
       </div>
@@ -7547,7 +7559,7 @@ function parseWithdrawalsWorkbook(wb) {
       const h = rows[i].map(rcNorm);
       const iDate = h.indexOf('data'), iVal = h.findIndex(x => x.startsWith('valor sacado'));
       if (iDate < 0 || iVal < 0) continue;
-      const iSt = h.indexOf('status'), iDest = h.findIndex(x => x.startsWith('conta de destino')), iTx = h.findIndex(x => x.startsWith('id da transac'));
+      const iHr = h.indexOf('hora'), iSt = h.indexOf('status'), iDest = h.findIndex(x => x.startsWith('conta de destino')), iTx = h.findIndex(x => x.startsWith('id da transac'));
       const out = { items: [], failed: 0, failedTotal: 0, other: 0 };
       for (let k = i + 1; k < rows.length; k++) {
         const row = rows[k];
@@ -7562,7 +7574,11 @@ function parseWithdrawalsWorkbook(wb) {
         if (!status.startsWith('conclu')) { out.other++; continue; }
         const tx = iTx >= 0 ? String(row[iTx] == null ? '' : row[iTx]).trim() : '';
         const dest = iDest >= 0 ? String(row[iDest] || '').trim() : '';
-        out.items.push({ id: tx ? 'tx' + tx : 'wd' + date + '-' + value, txId: tx, date, value, note: dest.slice(0, 60) });
+        let time = '';
+        const hr = iHr >= 0 ? row[iHr] : '';
+        if (typeof hr === 'number' && hr >= 0 && hr < 1) { const mins = Math.round(hr * 1440); time = String(Math.floor(mins / 60) % 24).padStart(2, '0') + ':' + String(mins % 60).padStart(2, '0'); }
+        else { const mt = String(hr || '').match(/(\d{1,2}):(\d{2})/); if (mt) time = mt[1].padStart(2, '0') + ':' + mt[2]; }
+        out.items.push({ id: tx ? 'tx' + tx : 'wd' + date + '-' + value, txId: tx, date, time, value, note: dest.slice(0, 60) });
       }
       if (out.items.length || out.failed) return out;
     }
@@ -7570,9 +7586,13 @@ function parseWithdrawalsWorkbook(wb) {
   return null;
 }
 function mergeWithdrawals(items) {
-  const have = new Set(withdrawals.map(w => w.id));
+  const byId = new Map(withdrawals.map(w => [w.id, w]));
   let added = 0, dup = 0;
-  items.forEach(w => { if (have.has(w.id)) { dup++; return; } have.add(w.id); withdrawals.push(w); added++; });
+  items.forEach(w => {
+    const ex = byId.get(w.id);
+    if (ex) { dup++; if (!ex.time && w.time) ex.time = w.time; if (!ex.note && w.note) ex.note = w.note; return; }
+    byId.set(w.id, w); withdrawals.push(w); added++;
+  });
   return { added, dup };
 }
 
@@ -7958,19 +7978,27 @@ function renderReceipts() {
 
   // saques e saldo
   $('rc-wd-date').value = $('rc-wd-date').value || localDateStr();
-  const wd = withdrawals.slice().sort((a, b) => b.date.localeCompare(a.date));
   const wdTotal = rc2(withdrawals.reduce((s, w) => s + w.value, 0));
   const relAll = rc2(receipts.reduce((s, r) => s + r.released, 0));
   const adjAllTotal = rc2(adjAll.reduce((s, a) => s + a.value, 0));
   const firstFrom = per.length ? per[per.length - 1].from : '';
-  $('rc-wd-list').style.cssText = 'margin-top:12px;max-height:320px;overflow-y:auto';
-  const wdMonth = _rcMonthChoice ? rc2(withdrawals.filter(w => w.date.startsWith(_rcMonthChoice)).reduce((x, w) => x + w.value, 0)) : null;
-  const wdMonthN = _rcMonthChoice ? withdrawals.filter(w => w.date.startsWith(_rcMonthChoice)).length : 0;
-  const wdHead = wdMonth != null ? '<div class="rc-line" style="font-weight:600"><span>Sacado em ' + rcMonthLabel(_rcMonthChoice) + ' (' + wdMonthN + ')</span><span class="rc-val">' + fmt(wdMonth) + '</span></div>' : '';
-  $('rc-wd-list').innerHTML = wdHead + (wd.length ? wd.map(w =>
-    '<div class="rc-line"><span>' + rcFmtDate(w.date) + (w.note ? ' · ' + rcEsc(w.note) : '') + '</span><span class="rc-val">' + fmt(w.value) +
-    ' <button class="btn-icon" onclick="removeWithdrawal(\'' + w.id + '\')"><i class="ti ti-trash ic"></i></button></span></div>').join('')
-    : '<div style="font-size:12px;color:var(--text3)">Nenhum saque registrado.</div>');
+  // saques agrupados por mês, dia a dia (o mês selecionado, ou o mais recente, abre expandido)
+  const dow = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb'];
+  const wdByMonth = {};
+  withdrawals.forEach(w => { (wdByMonth[w.date.slice(0, 7)] = wdByMonth[w.date.slice(0, 7)] || []).push(w); });
+  const wdMonths = Object.keys(wdByMonth).sort().reverse();
+  const openMonth = _rcMonthChoice && wdByMonth[_rcMonthChoice] ? _rcMonthChoice : wdMonths[0];
+  $('rc-wd-list').innerHTML = wdMonths.length ? wdMonths.map(mk => {
+    const list = wdByMonth[mk].slice().sort((a, b) => (b.date + (b.time || '')).localeCompare(a.date + (a.time || '')));
+    const tot = rc2(list.reduce((x, w) => x + w.value, 0));
+    return '<details class="rc-wdm"' + (mk === openMonth ? ' open' : '') + '><summary><span>' + rcMonthLabel(mk) + ' <small>· ' + list.length + ' saque' + (list.length > 1 ? 's' : '') + '</small></span><span class="rc-val">' + fmt(tot) + '</span></summary>' +
+      list.map(w => {
+        const d = new Date(w.date + 'T12:00:00');
+        return '<div class="rc-line"><span>' + w.date.slice(8) + '/' + w.date.slice(5, 7) + ' <small style="color:var(--text3)">' + dow[d.getDay()] + (w.time ? ' · ' + w.time : '') + '</small>' +
+          (w.note ? ' <small style="color:var(--text3)">· ' + rcEsc(w.note) + '</small>' : '') + '</span><span class="rc-val">' + fmt(w.value) +
+          ' <button class="btn-icon" onclick="removeWithdrawal(\'' + w.id + '\')"><i class="ti ti-trash ic"></i></button></span></div>';
+      }).join('') + '</details>';
+  }).join('') : '<div style="font-size:12px;color:var(--text3)">Nenhum saque registrado. Importe o arquivo de saques da Central do Vendedor ou registre um abaixo.</div>';
   // liberado × sacado por mês (acumula o saldo mês a mês)
   const mm = {};
   const mget = k => mm[k] || (mm[k] = { rel: 0, wd: 0, n: 0 });
