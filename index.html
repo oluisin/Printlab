@@ -1151,6 +1151,31 @@
       #sales-tbody td:nth-child(4)::after { content: '×'; color: var(--text3); }
       #sales-tbody td:last-child { top: 6px; right: 6px; }
     }
+    /* ── Recebimentos ── */
+    #page-receipts { padding-bottom: 88px; }
+    #page-receipts .rc-grid4 { grid-template-columns: repeat(4, 1fr); }
+    #page-receipts .rc-ksub { font-size: 11px; color: var(--text3); margin-top: 6px; line-height: 1.4; }
+    #page-receipts .rc-cols { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; margin-bottom: 16px; }
+    #page-receipts .rc-line { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 8px 0; border-bottom: 0.5px solid var(--border); font-size: 13px; }
+    #page-receipts .rc-line:last-child { border-bottom: none; }
+    #page-receipts .rc-line.rc-strong { font-weight: 700; font-size: 14px; border-top: 1px solid var(--border); margin-top: 4px; }
+    #page-receipts .rc-val { font-family: 'JetBrains Mono', monospace; white-space: nowrap; display: inline-flex; align-items: center; gap: 4px; }
+    #page-receipts .rc-val small { color: var(--text3); font-size: 10px; margin-left: 4px; }
+    #page-receipts .rc-wd-form { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    #page-receipts .rc-wd-form input[type="text"], #page-receipts .rc-wd-form button { grid-column: 1 / -1; }
+    #page-receipts .rc-order { padding: 10px 0; border-bottom: 0.5px solid var(--border); }
+    #page-receipts .rc-order:last-child { border-bottom: none; }
+    #page-receipts .rc-o-top { display: flex; justify-content: space-between; gap: 12px; align-items: baseline; }
+    #page-receipts .rc-o-name { font-size: 13px; font-weight: 600; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    #page-receipts .rc-o-val { font-family: 'JetBrains Mono', monospace; font-weight: 700; color: var(--green); white-space: nowrap; }
+    #page-receipts .rc-o-sub { font-size: 11px; color: var(--text3); margin-top: 3px; line-height: 1.5; }
+    @media (max-width: 768px) {
+      #page-receipts .rc-grid4 { grid-template-columns: repeat(2, 1fr) !important; }
+      #page-receipts .rc-cols { grid-template-columns: 1fr; gap: 10px; margin-bottom: 10px; }
+      #page-receipts .filter-bar .btn-primary, #page-receipts .filter-bar .btn-ghost { width: 100%; justify-content: center; }
+      #page-receipts .rc-line { font-size: 12px; }
+    }
+
   </style>
 </head>
 <body>
@@ -1200,6 +1225,7 @@
     <a onclick="navigate('products')" data-page="products">Produtos</a>
     <a onclick="navigate('sales')" data-page="sales">Vendas</a>
     <a onclick="navigate('expenses')" data-page="expenses">Custos</a>
+    <a onclick="navigate('receipts')" data-page="receipts">Recebimentos</a>
     <div style="position:relative">
       <a onclick="toggleTopbarMore(event)" id="topbar-analises-trigger">Análises ▾</a>
       <div id="topbar-analises-menu" style="display:none;position:absolute;top:28px;left:0;background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:8px;min-width:180px;z-index:60;box-shadow:0 12px 32px rgba(0,0,0,0.35)">
@@ -1266,6 +1292,9 @@
       <div class="nav-group-body">
         <button class="nav-btn" onclick="navigate('expenses')">
           <i class="ti ti-cash nb-icon" aria-hidden="true"></i> Custos Operacionais
+        </button>
+        <button class="nav-btn" onclick="navigate('receipts')">
+          <i class="ti ti-wallet nb-icon" aria-hidden="true"></i> Recebimentos
         </button>
         <button class="nav-btn" onclick="navigate('breakeven')">
           <i class="ti ti-scale nb-icon" aria-hidden="true"></i> Ponto de Equilíbrio
@@ -1364,6 +1393,10 @@
       <button class="more-item" onclick="navMore('expenses')">
         <span class="more-icon"><i class="ti ti-cash ic"></i></span>
         <span class="more-label">Custos</span>
+      </button>
+      <button class="more-item" onclick="navMore('receipts')">
+        <span class="more-icon"><i class="ti ti-wallet ic"></i></span>
+        <span class="more-label">Recebimentos</span>
       </button>
       <button class="more-item" onclick="navMore('deadlines')">
         <span class="more-icon"><i class="ti ti-clock-exclamation ic"></i></span>
@@ -2085,6 +2118,68 @@
         manualmente. Um pedido some daqui quando é marcado <strong>"Pronto p/ postar"</strong> na Fila de Produção,
         pelo botão de check ao lado de cada pedido, ou selecionando vários e usando <strong>"Dar baixa em massa"</strong>
         no topo da lista — útil pra limpar de uma vez pedidos antigos que você já sabe que foram entregues.
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════ RECEBIMENTOS ══════════════ -->
+  <div class="page" id="page-receipts">
+    <div class="page-header">
+      <div>
+        <div class="page-title">Recebimentos</div>
+        <div class="page-sub" id="rc-sub">O que a Shopee liberou de verdade para a sua carteira</div>
+      </div>
+      <div class="filter-bar">
+        <select id="rc-month" onchange="onReceiptsMonthChange()"><option value="">Todos os meses</option></select>
+        <label class="btn-primary" style="cursor:pointer"><i class="ti ti-file-import ic"></i> Importar rendimento
+          <input type="file" id="rc-file" accept=".xlsx" multiple style="display:none" onchange="importReceiptFiles(event)" />
+        </label>
+        <button class="btn-ghost" onclick="exportReceiptsXlsx()"><i class="ti ti-file-export ic"></i> Exportar XLSX</button>
+      </div>
+    </div>
+
+    <div id="rc-msg" style="display:none;margin-bottom:16px;padding:12px 14px;border-radius:10px;font-size:13px;line-height:1.6"></div>
+
+    <div class="card" id="rc-empty" style="display:none;text-align:center;padding:32px 20px">
+      <div style="font-size:15px;font-weight:600;margin-bottom:8px">Nenhum relatório de rendimento importado ainda</div>
+      <div style="font-size:13px;color:var(--text2);line-height:1.7;max-width:520px;margin:0 auto">
+        Na Central do Vendedor da Shopee: <strong>Finanças → Meus Rendimentos → Renda → Liberado</strong>, escolha o período e exporte.
+        Depois toque em <strong>Importar rendimento</strong>. Pode importar vários meses de uma vez.
+        Esse arquivo traz o valor que realmente foi liberado, pedido a pedido.
+      </div>
+    </div>
+
+    <div id="rc-body" style="display:none">
+      <div class="summary-grid rc-grid4">
+        <div class="summary-card"><div class="summary-label">Liberado</div><div class="summary-value" id="rc-k-released" style="color:var(--green)">—</div><div class="rc-ksub" id="rc-k-released-sub"></div></div>
+        <div class="summary-card"><div class="summary-label">Taxas e descontos</div><div class="summary-value" id="rc-k-ded" style="color:#f87171">—</div><div class="rc-ksub" id="rc-k-ded-sub"></div></div>
+        <div class="summary-card"><div class="summary-label">Lucro real</div><div class="summary-value" id="rc-k-profit">—</div><div class="rc-ksub" id="rc-k-profit-sub"></div></div>
+        <div class="summary-card"><div class="summary-label">A liberar</div><div class="summary-value" id="rc-k-pending" style="color:var(--accent2)">—</div><div class="rc-ksub" id="rc-k-pending-sub"></div></div>
+      </div>
+
+      <div class="rc-cols">
+        <div class="card"><div class="card-title">De onde saiu o dinheiro</div><div id="rc-breakdown"></div></div>
+        <div class="card"><div class="card-title">O painel × o que a Shopee liberou</div><div id="rc-compare"></div>
+          <div class="card-title" style="margin-top:22px">Relatórios importados</div><div id="rc-periods"></div></div>
+      </div>
+
+      <div class="rc-cols">
+        <div class="card">
+          <div class="card-title">Saques para o Mercado Pago</div>
+          <div class="rc-wd-form">
+            <input type="date" id="rc-wd-date" />
+            <input type="number" id="rc-wd-value" step="0.01" min="0" placeholder="Valor (R$)" />
+            <input type="text" id="rc-wd-note" maxlength="60" placeholder="Observação (opcional)" />
+            <button class="btn-primary" onclick="addWithdrawal()">Registrar saque</button>
+          </div>
+          <div id="rc-wd-list" style="margin-top:12px"></div>
+        </div>
+        <div class="card"><div class="card-title">Saldo na carteira da Shopee</div><div id="rc-balance"></div></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Pedidos liberados</div>
+        <div id="rc-orders"></div>
       </div>
     </div>
   </div>
@@ -3126,6 +3221,10 @@ let shopeeFeeTiers = loadLocal('pl_shopee_fee_tiers', DEFAULT_SHOPEE_FEE_TIERS);
 let products  = loadLocal('pl_products',  DEFAULT_PRODUCTS);
 let sales     = loadLocal('pl_sales',     DEFAULT_SALES);
 let expenses  = loadLocal('pl_expenses',  []);
+// Recebimentos (relatório de rendimento da Shopee) — documento próprio no Firebase, ver pullReceipts/pushReceipts
+let receipts       = loadLocal('pl_receipts',        []);
+let receiptPeriods = loadLocal('pl_receipt_periods', []);
+let withdrawals    = loadLocal('pl_withdrawals',     []);
 
 const EXPENSE_CATEGORIES = ['Filamento', 'Embalagem', 'Tinta/Pintura', 'Limpeza', 'Ferramentas', 'Papel/Impressão', 'Outros'];
 const EXPENSE_TYPES = ['Variável', 'Fixo Mensal'];
@@ -3239,6 +3338,7 @@ async function pullFromFirebase() {
       // No data in Firebase yet — push local data
       onFirebaseLoaded(true);
     }
+    pullReceipts();   // recebimentos ficam em documento separado (não pesa no limite de 1 MB do principal)
   } catch(e) {
     if (handleFirebaseDenied(e)) return;
     // Offline: segue com os dados locais e libera o salvamento
@@ -4091,7 +4191,7 @@ function navigate(page) {
   const pageGroups = {
     home: 'ng-principal', dashboard: 'ng-principal', products: 'ng-principal', sales: 'ng-principal', production: 'ng-principal',
     deadlines: 'ng-principal',
-    expenses: 'ng-financeiro', breakeven: 'ng-financeiro', projection: 'ng-financeiro',
+    expenses: 'ng-financeiro', receipts: 'ng-financeiro', breakeven: 'ng-financeiro', projection: 'ng-financeiro',
     ranking: 'ng-analises', seasonality: 'ng-analises', hours: 'ng-analises', analysis: 'ng-analises', pricehistory: 'ng-analises', calendar: 'ng-analises', score: 'ng-analises',
     settings: 'ng-sistema',
   };
@@ -4114,6 +4214,7 @@ function renderPage(page) {
   if (page === 'production') renderProductionQueue();
   if (page === 'deadlines') renderDeadlines();
   if (page === 'expenses')  renderExpenses();
+  if (page === 'receipts')  renderReceipts();
   if (page === 'settings')    renderSettings();
   if (page === 'analysis')    renderAnalysis();
   if (page === 'seasonality') renderSeasonality();
@@ -7359,6 +7460,562 @@ function renderAnalysis() {
 }
 
 // ══════════════════════════════════════════
+//  RECEBIMENTOS — o que a Shopee liberou DE VERDADE (relatório de rendimento)
+// ══════════════════════════════════════════
+// O relatório de pedidos NÃO traz todos os descontos (Devolução Fácil, recarga automática, cupom,
+// reembolso) e o "Valor Total" dele inclui o frete pago pelo comprador. Já o relatório de rendimento
+// ("Income.lançado") traz, pedido a pedido, o valor que realmente entrou na carteira da Shopee:
+//   liberado = subtotal + comissão + serviço + transação + Devolução Fácil + recarga automática
+//              + cupom + reembolso + afiliados + frete líquido (+ outros)
+// Os valores ficam com o sinal do arquivo (descontos negativos). Nenhum dado pessoal do comprador é guardado.
+
+const RC_COMPONENTS = [
+  { key: 'commission',   label: 'Comissão' },
+  { key: 'service',      label: 'Taxa de serviço (inclui a taxa por item)' },
+  { key: 'transaction',  label: 'Taxa de transação' },
+  { key: 'returnFee',    label: 'Devolução Fácil' },
+  { key: 'autoRecharge', label: 'Recarga automática (pedido)' },
+  { key: 'coupon',       label: 'Cupom do vendedor' },
+  { key: 'refund',       label: 'Reembolsos' },
+  { key: 'affiliate',    label: 'Comissão de afiliados' },
+  { key: 'shipping',     label: 'Frete (líquido)' },
+  { key: 'other',        label: 'Outros (não classificado)' },
+];
+
+let _rcMonthChoice = null;   // null = ainda não escolheu (abre no mês mais recente); '' = todos
+
+// ── utilidades de leitura do XLSX
+function rcEsc(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
+}
+function rcNorm(s) {
+  return String(s == null ? '' : s).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/\s+/g, ' ').trim();
+}
+function rcNum(v) {
+  if (typeof v === 'number') return isFinite(v) ? v : 0;
+  if (v == null) return 0;
+  let s = String(v).trim();
+  if (!s || s === '-') return 0;
+  if (s.indexOf(',') >= 0 && s.indexOf('.') < 0) s = s.replace(',', '.');
+  const n = parseFloat(s);
+  return isFinite(n) ? n : 0;
+}
+const rc2 = n => Math.round(n * 100) / 100;
+function rcDate(v) {
+  if (v instanceof Date && !isNaN(v)) return localDateStr(v);
+  const s = String(v == null ? '' : v).trim();
+  let m = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (m) return m[1] + '-' + m[2] + '-' + m[3];
+  m = s.match(/^(\d{2})\/(\d{2})\/(\d{4})/);
+  if (m) return m[3] + '-' + m[2] + '-' + m[1];
+  return '';
+}
+function rcFmtDate(d) { if (!d) return '—'; const [y, m, dd] = d.split('-'); return dd + '/' + m + '/' + y.slice(2); }
+function rcMonthLabel(ym) {
+  const nomes = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
+  const [y, m] = ym.split('-'); return nomes[parseInt(m, 10) - 1] + '/' + y.slice(2);
+}
+
+// ── lê o workbook do relatório de rendimento
+function parseIncomeWorkbook(wb, fileName) {
+  const rowsOf = ws => XLSX.utils.sheet_to_json(ws, { header: 1, defval: '', raw: true });
+
+  // 1) Aba com os pedidos: tem cabeçalho "ID do pedido" + "Quantia total lançada"
+  let rows = null, hdrIdx = -1;
+  for (const name of wb.SheetNames) {
+    const r = rowsOf(wb.Sheets[name]);
+    for (let i = 0; i < Math.min(r.length, 15); i++) {
+      const norm = r[i].map(rcNorm);
+      if (norm.includes('id do pedido') && norm.some(x => x.startsWith('quantia total lancada'))) { rows = r; hdrIdx = i; break; }
+    }
+    if (rows) break;
+  }
+  if (!rows) throw new Error('Não achei a aba com os pedidos. Esse arquivo é o "Relatório de rendimento" (Income) da Shopee?');
+
+  const hdr = rows[hdrIdx].map(rcNorm);
+  // primeira coluna com esse título (alguns títulos se repetem no arquivo)
+  const ci = (...names) => { for (const n of names) { const k = hdr.indexOf(rcNorm(n)); if (k >= 0) return k; } return -1; };
+  const C = {
+    kind: ci('Ver'), order: ci('ID do pedido'), refundId: ci('ID do reembolso'), sku: ci('SKU'), name: ci('Nome do produto'),
+    orderDate: ci('Data de criação do pedido'), releaseDate: ci('Data de conclusão do pagamento'),
+    released: ci('Quantia total lançada (R$)'), subtotal: ci('Preço do produto'), refund: ci('Valor do Reembolso'),
+    coupon: ci('Cupom'), shipBuyer: ci('Taxa de frete paga pelo comprador'), shipPartner: ci('Frete cobrado pelo parceiro logístico'),
+    shipDisc: ci('Desconto de frete pela Shopee'), shipReverse: ci('Taxa de envio reverso'), shipReturn: ci('Taxa de devolução do vendedor'),
+    commission: ci('Taxa de comissão líquida'), service: ci('Taxa de serviço líquida'), transaction: ci('Taxa de transação'),
+    affiliate: ci('Taxa de comissão Afiliados do Vendedor'), returnFee: ci('Taxa de Devolução Fácil Shopee'),
+    autoRecharge: ci('Taxa da Recarga Automática (Pedido)'),
+  };
+  ['order', 'released', 'subtotal', 'commission', 'service'].forEach(k => {
+    if (C[k] < 0) throw new Error('Coluna não encontrada no arquivo: ' + k);
+  });
+  const g = (row, k) => (C[k] >= 0 ? row[C[k]] : '');
+
+  const names = {};   // pedido → nomes dos produtos (linhas "Sku")
+  const skus  = {};
+  const data  = rows.slice(hdrIdx + 1);
+  data.forEach(row => {
+    const oid = String(g(row, 'order') || '').trim();
+    if (!oid) return;
+    if (C.kind >= 0 && rcNorm(row[C.kind]) === 'sku') {
+      const nm = String(g(row, 'name') || '').trim();
+      if (nm && nm !== '-') (names[oid] = names[oid] || []).push(nm);
+      const sk = String(g(row, 'sku') || '').trim();
+      if (sk && sk !== '-') (skus[oid] = skus[oid] || []).push(sk);
+    }
+  });
+
+  // 2) Período e total conferido pela própria Shopee (aba Summary)
+  let from = '', to = '', shopeeTotal = null;
+  const sumName = wb.SheetNames.find(n => rcNorm(n) === 'summary');
+  if (sumName) {
+    rowsOf(wb.Sheets[sumName]).forEach(r => {
+      const label = rcNorm(r[0]);
+      if (label === 'de' && !from) from = rcDate(r[1]);
+      if (label === 'para' && !to) to = rcDate(r[1]);
+      if (label.startsWith('3. quantidade total liberada') || label.startsWith('3. total liberado')) {
+        const v = r.slice(1).find(x => x !== '' && x != null);
+        if (v !== undefined) shopeeTotal = rc2(rcNum(v));
+      }
+    });
+  }
+  if (!from || !to) {
+    const m = String(fileName || '').match(/(\d{4})(\d{2})(\d{2})_(\d{4})(\d{2})(\d{2})/);
+    if (m) { from = from || (m[1] + '-' + m[2] + '-' + m[3]); to = to || (m[4] + '-' + m[5] + '-' + m[6]); }
+  }
+  if (!from || !to) throw new Error('Não consegui identificar o período do relatório.');
+  const periodKey = from + '|' + to;
+
+  // 3) Pedidos liberados (uma linha por pedido — as linhas "Sku" só repetem o item)
+  const out = [];
+  data.forEach(row => {
+    const oid = String(g(row, 'order') || '').trim();
+    if (!oid) return;
+    if (C.kind >= 0 && rcNorm(row[C.kind]) !== 'order') return;
+    const refundId = String(g(row, 'refundId') || '').trim();
+    const rid = (refundId && refundId !== '-') ? refundId : '';
+    const r = {
+      key: oid + '|' + rid, orderId: oid, refundId: rid, periodKey,
+      orderDate: rcDate(g(row, 'orderDate')), releaseDate: rcDate(g(row, 'releaseDate')),
+      product: (names[oid] || []).join(' + ').slice(0, 90), sku: (skus[oid] || []).join(', ').slice(0, 40),
+      subtotal: rc2(rcNum(g(row, 'subtotal'))), commission: rc2(rcNum(g(row, 'commission'))), service: rc2(rcNum(g(row, 'service'))),
+      transaction: rc2(rcNum(g(row, 'transaction'))), returnFee: rc2(rcNum(g(row, 'returnFee'))),
+      autoRecharge: rc2(rcNum(g(row, 'autoRecharge'))), coupon: rc2(rcNum(g(row, 'coupon'))), refund: rc2(rcNum(g(row, 'refund'))),
+      affiliate: rc2(rcNum(g(row, 'affiliate'))),
+      shipping: rc2(rcNum(g(row, 'shipBuyer')) + rcNum(g(row, 'shipPartner')) + rcNum(g(row, 'shipDisc')) + rcNum(g(row, 'shipReverse')) + rcNum(g(row, 'shipReturn'))),
+      released: rc2(rcNum(g(row, 'released'))),
+    };
+    // O que sobrar depois de todas as parcelas conhecidas (ex.: AMP) vai para "outros" — assim a conta sempre fecha.
+    r.other = rc2(r.released - (r.subtotal + r.commission + r.service + r.transaction + r.returnFee + r.autoRecharge + r.coupon + r.refund + r.affiliate + r.shipping));
+    out.push(r);
+  });
+  if (!out.length) throw new Error('Nenhum pedido encontrado no arquivo.');
+  const rowsTotal = rc2(out.reduce((s, r) => s + r.released, 0));
+
+  // 4) Ajustes (ex.: reembolso por objeto perdido) — ficam fora do total liberado dos pedidos
+  const adjustments = [];
+  const adjName = wb.SheetNames.find(n => rcNorm(n) === 'adjustment');
+  if (adjName) {
+    const ar = rowsOf(wb.Sheets[adjName]);
+    const hi = ar.findIndex(r => r.map(rcNorm).includes('valor do ajuste') && r.map(rcNorm).some(x => x.startsWith('numero da sequencia')));
+    if (hi >= 0) {
+      const h = ar[hi].map(rcNorm);
+      const ix = n => h.indexOf(n);
+      for (let i = hi + 1; i < ar.length; i++) {
+        const r = ar[i];
+        if (typeof r[0] !== 'number') break;
+        adjustments.push({
+          date: rcDate(r[ix('data de conclusao do ajuste')]), type: String(r[ix('tipo/descricao do ajuste')] || '').slice(0, 80),
+          value: rc2(rcNum(r[ix('valor do ajuste')])), orderId: String(r[ix('numero do pedido relacionado')] || '').trim(),
+        });
+      }
+    }
+  }
+  const adjustmentsTotal = rc2(adjustments.reduce((s, a) => s + a.value, 0));
+
+  return { from, to, periodKey, shopeeTotal, rowsTotal, receipts: out, adjustments, adjustmentsTotal };
+}
+
+// ── aplica um relatório lido nos dados (reimportar o mesmo período substitui, sem duplicar)
+function mergeIncomeReport(p) {
+  const newKeys = new Set(p.receipts.map(r => r.key));
+  receipts = receipts.filter(r => r.periodKey !== p.periodKey && !newKeys.has(r.key));
+  receipts.push(...p.receipts);
+  receiptPeriods = receiptPeriods.filter(x => x.key !== p.periodKey);
+  receiptPeriods.push({
+    key: p.periodKey, from: p.from, to: p.to, shopeeTotal: p.shopeeTotal, rowsTotal: p.rowsTotal,
+    orderCount: p.receipts.length, adjustments: p.adjustments, adjustmentsTotal: p.adjustmentsTotal,
+    importedAt: new Date().toISOString(),
+  });
+}
+
+function importReceiptFiles(event) {
+  const files = Array.from(event.target.files || []);
+  event.target.value = '';
+  if (!files.length) return;
+  if (typeof XLSX === 'undefined') { rcShowMsg('A biblioteca de planilhas (SheetJS) não carregou. Verifique a conexão e tente de novo.', 'err'); return; }
+  rcShowMsg('⏳ Lendo ' + files.length + ' arquivo(s)...', 'info');
+
+  const readOne = f => new Promise(res => {
+    const rd = new FileReader();
+    rd.onload = e => {
+      try { res({ file: f.name, parsed: parseIncomeWorkbook(XLSX.read(e.target.result, { type: 'array' }), f.name) }); }
+      catch (err) { res({ file: f.name, error: err.message }); }
+    };
+    rd.onerror = () => res({ file: f.name, error: 'Não consegui ler o arquivo.' });
+    rd.readAsArrayBuffer(f);
+  });
+
+  Promise.all(files.map(readOne)).then(results => {
+    const lines = [];
+    let hadError = false, warn = false, lastMonth = null;
+    results.forEach(r => {
+      if (r.error) { hadError = true; lines.push('✖ <strong>' + rcEsc(r.file) + '</strong>: ' + rcEsc(r.error)); return; }
+      const p = r.parsed;
+      mergeIncomeReport(p);
+      lastMonth = (p.receipts.map(x => x.releaseDate).filter(Boolean).sort().pop() || p.to).slice(0, 7);
+      const okTotal = p.shopeeTotal != null && Math.abs(p.shopeeTotal - p.rowsTotal) < 0.01;
+      if (!okTotal) warn = true;
+      lines.push('✔ <strong>' + rcFmtDate(p.from) + ' a ' + rcFmtDate(p.to) + '</strong>: ' + p.receipts.length + ' pedidos, liberado ' + fmt(p.rowsTotal) +
+        (p.shopeeTotal == null ? ' (sem total de conferência no arquivo)'
+          : okTotal ? ' — confere com o total da Shopee ✓'
+          : ' — <span style="color:var(--yellow)">atenção: o total da Shopee é ' + fmt(p.shopeeTotal) + '</span>') +
+        (p.adjustments.length ? ' · ' + p.adjustments.length + ' ajuste(s) de ' + fmt(p.adjustmentsTotal) : ''));
+    });
+    if (results.some(r => !r.error)) { saveReceipts(); if (lastMonth) _rcMonthChoice = lastMonth; }
+    rcShowMsg(lines.join('<br>'), hadError ? 'err' : (warn ? 'warn' : 'ok'));
+    renderReceipts();
+  });
+}
+
+function rcShowMsg(html, kind) {
+  const el = document.getElementById('rc-msg'); if (!el) return;
+  const c = { ok: ['rgba(74,222,128,0.1)', 'rgba(74,222,128,0.25)', 'var(--green)'], warn: ['rgba(251,191,36,0.1)', 'rgba(251,191,36,0.25)', 'var(--yellow)'],
+              err: ['rgba(248,113,113,0.1)', 'rgba(248,113,113,0.25)', '#f87171'], info: ['rgba(96,165,250,0.1)', 'rgba(96,165,250,0.25)', 'var(--blue)'] }[kind || 'info'];
+  el.style.display = 'block'; el.style.background = c[0]; el.style.border = '1px solid ' + c[1]; el.style.color = c[2];
+  el.innerHTML = html;
+}
+
+// ── ligação com as vendas do painel
+function rcSalesByOrder() {
+  const map = {};
+  sales.forEach(s => { if (s.shopeeOrderId) (map[s.shopeeOrderId] = map[s.shopeeOrderId] || []).push(s); });
+  return map;
+}
+function rcProdCost(s) {
+  const p = products.find(x => x.id === s.productId);
+  if (!p) return null;
+  return calcProfitTotal(p, s.salePrice, s.qty, undefined, getVariationGrams(p, s.variationName)).prodCost;
+}
+// Custo de produção do pedido (soma das vendas ligadas a ele). null = sem venda correspondente no painel.
+function rcOrderCost(orderId, byOrder) {
+  const list = byOrder[orderId]; if (!list || !list.length) return null;
+  let cost = 0, any = false;
+  list.forEach(s => { const c = rcProdCost(s); if (c != null) { cost += c; any = true; } });
+  return any ? cost : null;
+}
+// Vendas do painel que ainda não aparecem em nenhum relatório de rendimento (e não foram canceladas)
+function rcPendingSales() {
+  const released = new Set(receipts.map(r => r.orderId));
+  return sales.filter(s => s.shopeeOrderId && !released.has(s.shopeeOrderId) && !/cancel/i.test(s.shopeeStatus || '') && !/^(devolu|reembols)/i.test((s.shopeeStatus || '').trim()));
+}
+
+// ── aplicar o valor liberado às vendas (para Dashboard/Lucro ficarem exatos) — com desfazer
+function rcApplyToSales() {
+  const byOrder = rcSalesByOrder();
+  const totals = {};
+  receipts.forEach(r => { totals[r.orderId] = rc2((totals[r.orderId] || 0) + r.released); });
+  let orders = 0, skipped = 0;
+  Object.keys(totals).forEach(oid => {
+    const list = byOrder[oid]; if (!list || !list.length) return;
+    const total = totals[oid];
+    if (total <= 0) { skipped++; return; }
+    const base = list.reduce((s, x) => s + x.salePrice * x.qty, 0) || 1;
+    list.forEach(s => {
+      if (s._shopeeTotalBackup === undefined) s._shopeeTotalBackup = s._shopeeTotal || 0;
+      s._shopeeTotal = rc2(total * (s.salePrice * s.qty) / base);
+    });
+    orders++;
+  });
+  save('pl_sales', sales);
+  rcShowMsg('✔ Valor liberado aplicado a ' + orders + ' pedido(s) do painel.' + (skipped ? ' ' + skipped + ' ficaram de fora (liberado zerado ou negativo, ex.: reembolso total).' : '') +
+    ' O lucro do Dashboard, Vendas e Análise agora usa o valor real desses pedidos.', 'ok');
+  renderReceipts();
+}
+function rcUndoApply() {
+  if (!confirm('Voltar as vendas ao valor de renda que tinham antes de aplicar os recebimentos?')) return;
+  let n = 0;
+  sales.forEach(s => {
+    if (s._shopeeTotalBackup === undefined) return;
+    if (s._shopeeTotalBackup > 0) s._shopeeTotal = s._shopeeTotalBackup; else delete s._shopeeTotal;
+    delete s._shopeeTotalBackup; n++;
+  });
+  save('pl_sales', sales);
+  rcShowMsg('Desfeito em ' + n + ' venda(s).', 'info');
+  renderReceipts();
+}
+
+// ── saques para o Mercado Pago
+function addWithdrawal() {
+  const date = document.getElementById('rc-wd-date').value || localDateStr();
+  const value = parseFloat(String(document.getElementById('rc-wd-value').value).replace(',', '.'));
+  const note = document.getElementById('rc-wd-note').value.trim().slice(0, 60);
+  if (!(value > 0)) { alert('Informe o valor do saque.'); return; }
+  withdrawals.push({ id: Date.now().toString(36) + Math.random().toString(36).slice(2, 5), date, value: rc2(value), note });
+  saveReceipts();
+  document.getElementById('rc-wd-value').value = ''; document.getElementById('rc-wd-note').value = '';
+  renderReceipts();
+}
+function removeWithdrawal(id) {
+  if (!confirm('Remover este saque da lista?')) return;
+  withdrawals = withdrawals.filter(w => w.id !== id);
+  saveReceipts();
+  renderReceipts();
+}
+function removeReceiptPeriod(key) {
+  const p = receiptPeriods.find(x => x.key === key); if (!p) return;
+  if (!confirm('Remover o relatório de ' + rcFmtDate(p.from) + ' a ' + rcFmtDate(p.to) + ' (' + p.orderCount + ' pedidos)? Você pode importá-lo de novo depois.')) return;
+  receipts = receipts.filter(r => r.periodKey !== key);
+  receiptPeriods = receiptPeriods.filter(x => x.key !== key);
+  saveReceipts();
+  renderReceipts();
+}
+function onReceiptsMonthChange() { _rcMonthChoice = document.getElementById('rc-month').value; renderReceipts(); }
+
+// ── tela
+function renderReceipts() {
+  const $ = id => document.getElementById(id);
+  const hasData = receipts.length > 0;
+
+  // filtro de mês (pela data de LIBERAÇÃO — é quando o dinheiro entra)
+  const months = [...new Set(receipts.map(r => (r.releaseDate || '').slice(0, 7)).filter(Boolean))].sort().reverse();
+  if (_rcMonthChoice === null) _rcMonthChoice = months[0] || '';
+  if (_rcMonthChoice && !months.includes(_rcMonthChoice)) _rcMonthChoice = months[0] || '';
+  const sel = $('rc-month');
+  sel.innerHTML = '<option value="">Todos os meses</option>' + months.map(m => '<option value="' + m + '"' + (m === _rcMonthChoice ? ' selected' : '') + '>Liberado em ' + rcMonthLabel(m) + '</option>').join('');
+  sel.value = _rcMonthChoice;
+
+  const rows = receipts.filter(r => !_rcMonthChoice || (r.releaseDate || '').startsWith(_rcMonthChoice));
+  const byOrder = rcSalesByOrder();
+
+  // totais do período
+  const T = { subtotal: 0, released: 0, cost: 0, linkedSub: 0, linkedRel: 0, linked: 0, unlinked: 0 };
+  RC_COMPONENTS.forEach(c => T[c.key] = 0);
+  rows.forEach(r => {
+    T.subtotal += r.subtotal; T.released += r.released;
+    RC_COMPONENTS.forEach(c => T[c.key] += r[c.key] || 0);
+    const cost = rcOrderCost(r.orderId, byOrder);
+    if (cost == null) T.unlinked++; else { T.cost += cost; T.linkedSub += r.subtotal; T.linkedRel += r.released; T.linked++; }
+  });
+  const adjAll = receiptPeriods.flatMap(p => p.adjustments || []);
+  const adjRows = adjAll.filter(a => !_rcMonthChoice || (a.date || '').startsWith(_rcMonthChoice));
+  const adjTotal = rc2(adjRows.reduce((s, a) => s + a.value, 0));
+  const deductions = rc2(T.subtotal - T.released);
+  const profit = T.linkedRel - T.cost;   // só pedidos que têm venda (e portanto custo) no painel
+
+  $('rc-sub').textContent = hasData
+    ? rows.length + ' pedido(s) liberado(s)' + (_rcMonthChoice ? ' em ' + rcMonthLabel(_rcMonthChoice) : ' (todos os meses importados)')
+    : 'O que a Shopee liberou de verdade para a sua carteira';
+
+  $('rc-empty').style.display = hasData ? 'none' : 'block';
+  $('rc-body').style.display  = hasData ? 'block' : 'none';
+  if (!hasData) return;
+
+  // cartões
+  $('rc-k-released').textContent = fmt(T.released);
+  $('rc-k-released-sub').textContent = rows.length + ' pedidos' + (adjRows.length ? ' · + ' + fmt(adjTotal) + ' em ajustes' : '');
+  $('rc-k-ded').textContent = fmt(deductions);
+  $('rc-k-ded-sub').textContent = (T.subtotal > 0 ? (deductions / T.subtotal * 100).toFixed(1) : '0.0') + '% do subtotal vendido';
+  $('rc-k-profit').textContent = T.linked ? fmt(profit) : '—';
+  $('rc-k-profit').style.color = profit >= 0 ? 'var(--green)' : '#f87171';
+  $('rc-k-profit-sub').textContent = T.linked
+    ? 'Margem: ' + (T.linkedSub > 0 ? (profit / T.linkedSub * 100).toFixed(1) : '0.0') + '% do subtotal' + (T.unlinked ? ' · ' + T.unlinked + ' sem venda no painel (fora da conta)' : '')
+    : 'importe as vendas da Shopee no painel';
+  const pend = rcPendingSales();
+  const pendOrders = new Set(pend.map(s => s.shopeeOrderId)).size;
+  const pendEst = pend.reduce((s, x) => s + estimateShopeeIncome(products.find(p => p.id === x.productId), x.salePrice, x.qty), 0);
+  $('rc-k-pending').textContent = fmt(pendEst);
+  $('rc-k-pending-sub').textContent = pendOrders + ' pedido(s) · estimativa';
+
+  // de onde saiu o dinheiro
+  const line = (label, val, strong, pct) =>
+    '<div class="rc-line' + (strong ? ' rc-strong' : '') + '"><span>' + label + '</span><span class="rc-val" style="color:' + (val < 0 ? '#f87171' : (strong ? 'var(--green)' : 'var(--text)')) + '">' + (val < 0 ? '−' : '') + fmt(Math.abs(val)) +
+    (pct != null && T.subtotal > 0 ? ' <small>' + (Math.abs(val) / T.subtotal * 100).toFixed(1) + '%</small>' : '') + '</span></div>';
+  let h = line('Subtotal dos produtos vendidos', T.subtotal, false, null);
+  RC_COMPONENTS.forEach(c => { if (Math.abs(T[c.key]) >= 0.005) h += line(c.label, T[c.key], false, true); });
+  h += line('Liberado para a carteira da Shopee', T.released, true, null);
+  if (adjRows.length) h += line('Ajustes no período (ex.: ' + rcEsc(adjRows[0].type) + ')', adjTotal, false, null);
+  $('rc-breakdown').innerHTML = h;
+
+  // o que o painel mostrava × o que foi liberado
+  const cmp = $('rc-compare');
+  let panelIncome = 0, cmpReleased = 0, cmpOrders = 0, applied = 0;
+  const totals = {};
+  rows.forEach(r => { totals[r.orderId] = rc2((totals[r.orderId] || 0) + r.released); });
+  let fullRefunds = 0;   // pedidos com liberado ≤ 0 (reembolso total): não dá para aplicar, então ficam fora da comparação
+  Object.keys(totals).forEach(oid => {
+    const list = byOrder[oid]; if (!list || !list.length) return;
+    if (totals[oid] <= 0) { fullRefunds++; return; }
+    cmpOrders++; cmpReleased += totals[oid];
+    list.forEach(s => { panelIncome += getSaleShopeeIncome(s, products.find(p => p.id === s.productId)); if (s._shopeeTotalBackup !== undefined) applied++; });
+  });
+  const diff = rc2(panelIncome - cmpReleased);
+  const anyBackup = sales.some(s => s._shopeeTotalBackup !== undefined);
+  let ch = '';
+  if (cmpOrders > 0) {
+    ch += Math.abs(diff) < 0.01
+      ? '<div style="font-size:13px;color:var(--green)"><i class="ti ti-circle-check ic"></i> As vendas do painel já usam o valor liberado nestes ' + cmpOrders + ' pedidos.</div>'
+      : '<div style="font-size:13px;line-height:1.6">Nestes <strong>' + cmpOrders + '</strong> pedidos o painel está mostrando <strong>' + fmt(panelIncome) + '</strong> de renda; a Shopee liberou <strong>' + fmt(cmpReleased) +
+        '</strong>. Diferença: <strong style="color:#f87171">' + fmt(diff) + '</strong> a mais no painel.</div>' +
+        '<button class="btn-primary" style="margin-top:12px" onclick="rcApplyToSales()"><i class="ti ti-wand ic"></i> Aplicar valores reais às vendas</button>';
+  } else {
+    ch += '<div style="font-size:13px;color:var(--text3)">Nenhum pedido deste período foi encontrado nas vendas do painel (o ID do pedido precisa ter vindo da importação da Shopee).</div>';
+  }
+  if (fullRefunds) ch += '<div style="font-size:11px;color:var(--text3);margin-top:10px;line-height:1.5">' + fullRefunds + ' pedido(s) com reembolso total (liberado zerado) ficam de fora desta comparação.</div>';
+  if (anyBackup) ch += ' <button class="btn-ghost" style="margin-top:12px" onclick="rcUndoApply()"><i class="ti ti-arrow-back-up ic"></i> Desfazer</button>';
+  cmp.innerHTML = ch;
+
+  // conferência com os relatórios importados
+  const per = receiptPeriods.slice().sort((a, b) => b.from.localeCompare(a.from));
+  $('rc-periods').innerHTML = per.map(p => {
+    const ok = p.shopeeTotal != null && Math.abs(p.shopeeTotal - p.rowsTotal) < 0.01;
+    return '<div class="rc-line"><span>' + rcFmtDate(p.from) + ' a ' + rcFmtDate(p.to) + ' · ' + p.orderCount + ' pedidos' +
+      (ok ? ' <span style="color:var(--green)">✓ confere</span>' : (p.shopeeTotal == null ? '' : ' <span style="color:var(--yellow)">⚠ Shopee: ' + fmt(p.shopeeTotal) + '</span>')) + '</span>' +
+      '<span class="rc-val">' + fmt(p.rowsTotal) + ' <button class="btn-icon" title="Remover este relatório" onclick="removeReceiptPeriod(\'' + p.key + '\')"><i class="ti ti-trash ic"></i></button></span></div>';
+  }).join('');
+
+  // saques e saldo
+  $('rc-wd-date').value = $('rc-wd-date').value || localDateStr();
+  const wd = withdrawals.slice().sort((a, b) => b.date.localeCompare(a.date));
+  const wdTotal = rc2(withdrawals.reduce((s, w) => s + w.value, 0));
+  const relAll = rc2(receipts.reduce((s, r) => s + r.released, 0));
+  const adjAllTotal = rc2(adjAll.reduce((s, a) => s + a.value, 0));
+  const firstFrom = per.length ? per[per.length - 1].from : '';
+  $('rc-wd-list').innerHTML = wd.length ? wd.map(w =>
+    '<div class="rc-line"><span>' + rcFmtDate(w.date) + (w.note ? ' · ' + rcEsc(w.note) : '') + '</span><span class="rc-val">' + fmt(w.value) +
+    ' <button class="btn-icon" onclick="removeWithdrawal(\'' + w.id + '\')"><i class="ti ti-trash ic"></i></button></span></div>').join('')
+    : '<div style="font-size:12px;color:var(--text3)">Nenhum saque registrado.</div>';
+  $('rc-balance').innerHTML =
+    line('Liberado (todos os relatórios importados)', relAll, false, null) +
+    (adjAllTotal ? line('Ajustes', adjAllTotal, false, null) : '') +
+    line('Saques para o Mercado Pago', -wdTotal, false, null) +
+    line('Saldo calculado na carteira da Shopee', rc2(relAll + adjAllTotal - wdTotal), true, null) +
+    '<div style="font-size:11px;color:var(--text3);margin-top:8px;line-height:1.5">Só fica correto se você importou todos os relatórios desde ' + (firstFrom ? rcFmtDate(firstFrom) : 'o início') +
+    ' e registrou todos os saques. Compare com o "Saldo" da Central do Vendedor.</div>';
+
+  // lista de pedidos
+  const sorted = rows.slice().sort((a, b) => (b.releaseDate || '').localeCompare(a.releaseDate || '') || b.orderId.localeCompare(a.orderId));
+  const LIMIT = 150;
+  $('rc-orders').innerHTML = sorted.slice(0, LIMIT).map(r => {
+    const cost = rcOrderCost(r.orderId, byOrder);
+    const ded = rc2(r.subtotal - r.released);
+    const parts = RC_COMPONENTS.filter(c => Math.abs(r[c.key] || 0) >= 0.005).map(c => c.label + ': ' + fmt(r[c.key])).join(' | ');
+    return '<div class="rc-order" title="' + rcEsc(parts) + '">' +
+      '<div class="rc-o-top"><span class="rc-o-name">' + rcEsc(r.product || ('Pedido ' + r.orderId)) + '</span><span class="rc-o-val">' + fmt(r.released) + '</span></div>' +
+      '<div class="rc-o-sub">' + rcEsc(r.orderId) + (r.refundId ? ' · reembolso' : '') + ' · liberado ' + rcFmtDate(r.releaseDate) + ' · pedido ' + rcFmtDate(r.orderDate) + '</div>' +
+      '<div class="rc-o-sub">Subtotal ' + fmt(r.subtotal) + ' · descontos ' + fmt(ded) + (r.subtotal > 0 ? ' (' + (ded / r.subtotal * 100).toFixed(0) + '%)' : '') +
+      ' · ' + (cost == null ? '<span style="color:var(--yellow)">sem venda no painel</span>' : 'lucro <strong style="color:' + (r.released - cost >= 0 ? 'var(--green)' : '#f87171') + '">' + fmt(r.released - cost) + '</strong>') + '</div></div>';
+  }).join('') + (sorted.length > LIMIT ? '<div style="font-size:12px;color:var(--text3);padding:10px 0">Mostrando ' + LIMIT + ' de ' + sorted.length + ' pedidos. A exportação traz todos.</div>' : '');
+}
+
+// ── exportação XLSX (todos os relatórios importados)
+function exportReceiptsXlsx() {
+  if (typeof XLSX === 'undefined') { alert('A biblioteca de planilhas ainda não carregou. Tente de novo em instantes.'); return; }
+  if (!receipts.length) { alert('Importe um relatório de rendimento da Shopee primeiro.'); return; }
+  const byOrder = rcSalesByOrder();
+  const sheetFrom = (aoa, widths) => { const ws = XLSX.utils.aoa_to_sheet(aoa); ws['!cols'] = widths.map(w => ({ wch: w })); return ws; };
+
+  const head = ['Pedido', 'ID do reembolso', 'Data do pedido', 'Data da liberação', 'Produto', 'Subtotal', 'Comissão', 'Taxa de serviço', 'Taxa de transação', 'Devolução Fácil',
+    'Recarga automática', 'Cupom do vendedor', 'Reembolso', 'Afiliados', 'Frete líquido', 'Outros', 'Liberado', 'Custo de produção', 'Lucro', 'Venda no painel'];
+  const sorted = receipts.slice().sort((a, b) => (b.releaseDate || '').localeCompare(a.releaseDate || ''));
+  const body = sorted.map(r => {
+    const cost = rcOrderCost(r.orderId, byOrder);
+    return [r.orderId, r.refundId, r.orderDate, r.releaseDate, r.product, r.subtotal, r.commission, r.service, r.transaction, r.returnFee, r.autoRecharge, r.coupon, r.refund,
+      r.affiliate, r.shipping, r.other, r.released, cost == null ? '' : rc2(cost), cost == null ? '' : rc2(r.released - cost), cost == null ? 'Não' : 'Sim'];
+  });
+
+  // resumo mensal (pela data de liberação)
+  const M = {};
+  receipts.forEach(r => {
+    const m = (r.releaseDate || '').slice(0, 7) || 'sem data';
+    const x = M[m] || (M[m] = { n: 0, subtotal: 0, commission: 0, service: 0, transaction: 0, returnFee: 0, autoRecharge: 0, coupon: 0, refund: 0, affiliate: 0, shipping: 0, other: 0, released: 0, cost: 0, adj: 0 });
+    x.n++; ['subtotal', 'commission', 'service', 'transaction', 'returnFee', 'autoRecharge', 'coupon', 'refund', 'affiliate', 'shipping', 'other', 'released'].forEach(k => x[k] += r[k] || 0);
+    const c = rcOrderCost(r.orderId, byOrder); if (c != null) x.cost += c;
+  });
+  receiptPeriods.forEach(p => (p.adjustments || []).forEach(a => { const m = (a.date || '').slice(0, 7) || 'sem data'; if (M[m]) M[m].adj += a.value; }));
+  const sumHead = ['Mês da liberação', 'Pedidos', 'Subtotal', 'Comissão', 'Taxa de serviço', 'Taxa de transação', 'Devolução Fácil', 'Recarga automática', 'Cupom', 'Reembolso', 'Afiliados', 'Frete líquido', 'Outros', 'Liberado', 'Ajustes', 'Total recebido', 'Custo de produção (pedidos ligados)'];
+  const sumBody = Object.keys(M).sort().reverse().map(m => {
+    const x = M[m];
+    return [m, x.n, rc2(x.subtotal), rc2(x.commission), rc2(x.service), rc2(x.transaction), rc2(x.returnFee), rc2(x.autoRecharge), rc2(x.coupon), rc2(x.refund), rc2(x.affiliate), rc2(x.shipping), rc2(x.other),
+      rc2(x.released), rc2(x.adj), rc2(x.released + x.adj), rc2(x.cost)];
+  });
+
+  const adjBody = receiptPeriods.flatMap(p => (p.adjustments || []).map(a => [a.date, a.type, a.value, a.orderId])).sort((a, b) => b[0].localeCompare(a[0]));
+  const wdBody = withdrawals.slice().sort((a, b) => b.date.localeCompare(a.date)).map(w => [w.date, w.value, w.note]);
+  const pend = rcPendingSales().map(s => {
+    const p = products.find(x => x.id === s.productId);
+    return [s.shopeeOrderId, s.date, p ? p.name : '', s.qty, rc2(s.salePrice * s.qty), rc2(estimateShopeeIncome(p, s.salePrice, s.qty)), s.shopeeStatus || ''];
+  }).sort((a, b) => b[1].localeCompare(a[1]));
+
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, sheetFrom([head, ...body], [18, 14, 12, 14, 44, 10, 10, 12, 12, 12, 12, 12, 10, 10, 10, 8, 10, 14, 10, 12]), 'Recebimentos');
+  XLSX.utils.book_append_sheet(wb, sheetFrom([sumHead, ...sumBody], [16, 8, 11, 11, 13, 13, 13, 14, 10, 11, 10, 11, 9, 11, 9, 13, 20]), 'Resumo mensal');
+  XLSX.utils.book_append_sheet(wb, sheetFrom([['Data', 'Tipo', 'Valor', 'Pedido relacionado'], ...adjBody], [12, 34, 10, 18]), 'Ajustes');
+  XLSX.utils.book_append_sheet(wb, sheetFrom([['Data', 'Valor', 'Observação'], ...wdBody], [12, 12, 30]), 'Saques');
+  XLSX.utils.book_append_sheet(wb, sheetFrom([['Pedido', 'Data do pedido', 'Produto', 'Qtd', 'Subtotal', 'Renda estimada', 'Status'], ...pend], [18, 12, 44, 6, 10, 14, 24]), 'A liberar');
+  XLSX.writeFile(wb, 'printlab-recebimentos-' + localDateStr() + '.xlsx');
+}
+
+// ── sincronização própria (documento separado para não estourar o limite de 1 MB do documento principal)
+let _rcLoaded = false, _rcPending = false, _rcTimer = null;
+function saveReceipts() {
+  saveLocal('pl_receipts', receipts); saveLocal('pl_receipt_periods', receiptPeriods); saveLocal('pl_withdrawals', withdrawals);
+  scheduleReceiptsSync();
+}
+function scheduleReceiptsSync() {
+  if (!_rcLoaded) { _rcPending = true; return; }
+  clearTimeout(_rcTimer);
+  _rcTimer = setTimeout(pushReceipts, 800);
+}
+async function pushReceipts() {
+  if (!window._db || !window._user || !_rcLoaded) return;
+  try {
+    await window._setDoc(window._doc(window._db, 'store', 'receipts'), { receipts, receiptPeriods, withdrawals, updatedAt: new Date().toISOString() });
+  } catch (e) {
+    // Não desloga nem trava o resto: se as regras do Firestore ainda não liberam este documento, os dados ficam só neste aparelho.
+    console.error('Firebase (recebimentos) erro:', e);
+    showSyncStatus('<i class="ti ti-alert-triangle ic"></i> Recebimentos só neste aparelho', 'var(--yellow)');
+  }
+}
+async function pullReceipts() {
+  if (!window._db || !window._user) return;
+  try {
+    const snap = await window._getDoc(window._doc(window._db, 'store', 'receipts'));
+    if (snap.exists()) {
+      const d = snap.data();
+      const cloud = { receipts: d.receipts || [], receiptPeriods: d.receiptPeriods || [], withdrawals: d.withdrawals || [] };
+      if (_rcPending) {
+        // houve edição local antes de carregar: junta nuvem + local (local prevalece nas mesmas chaves)
+        const mergeBy = (a, b, k) => { const m = new Map(a.map(x => [x[k], x])); b.forEach(x => m.set(x[k], x)); return [...m.values()]; };
+        receipts = mergeBy(cloud.receipts, receipts, 'key');
+        receiptPeriods = mergeBy(cloud.receiptPeriods, receiptPeriods, 'key');
+        withdrawals = mergeBy(cloud.withdrawals, withdrawals, 'id');
+      } else {
+        receipts = cloud.receipts; receiptPeriods = cloud.receiptPeriods; withdrawals = cloud.withdrawals;
+      }
+      saveLocal('pl_receipts', receipts); saveLocal('pl_receipt_periods', receiptPeriods); saveLocal('pl_withdrawals', withdrawals);
+      _rcLoaded = true;
+      if (_rcPending) { _rcPending = false; scheduleReceiptsSync(); }
+    } else {
+      _rcLoaded = true;
+      if (receipts.length || receiptPeriods.length || withdrawals.length) { _rcPending = false; scheduleReceiptsSync(); }
+    }
+    if (document.querySelector('.page.active')?.id === 'page-receipts') renderReceipts();
+  } catch (e) {
+    console.error('Firebase (recebimentos) leitura falhou:', e);   // segue com os dados locais; sem _rcLoaded não envia nada
+  }
+}
+
+// ══════════════════════════════════════════
 //  CALCULADORA DE PREÇO IDEAL
 // ══════════════════════════════════════════
 let _lastIdealPrice = 0;
@@ -7457,6 +8114,7 @@ function repairShopeeIncome() {
 
   sales = sales.map(s => {
     const oid = s.shopeeOrderId;
+    if (s._shopeeTotalBackup !== undefined) { skipped++; return s; }   // valor real aplicado pela aba Recebimentos: não sobrescrever
     if (!oid || !(s._shopeeCommission > 0 || s._shopeeService > 0)) { skipped++; return s; }
 
     const group = byOrder[oid] || [s];
@@ -7517,6 +8175,9 @@ function exportData() {
     sales,
     expenses,
     shopeeFeeTiers,
+    receipts,
+    receiptPeriods,
+    withdrawals,
   };
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
   const url  = URL.createObjectURL(blob);
@@ -7548,6 +8209,10 @@ function importData(event) {
       priceHistory   = data.priceHistory   || priceHistory;
       wasteRate      = data.wasteRate      || wasteRate;
       shopeeFeeTiers = data.shopeeFeeTiers || shopeeFeeTiers;
+      receipts       = data.receipts       || receipts;
+      receiptPeriods = data.receiptPeriods || receiptPeriods;
+      withdrawals    = data.withdrawals    || withdrawals;
+      saveReceipts();
       save('pl_filaments',        filaments);
       save('pl_products',         products);
       save('pl_sales',            sales);
@@ -8085,7 +8750,7 @@ function importShopee(event) {
         if (!oid) return;
         const st = String(r['Status do pedido'] || '').toLowerCase();
         if (skipStatus.some(s => st.includes(s))) return;
-        const valor = numCol(r, 'Valor Total', 'Subtotal do produto');
+        const valor = numCol(r, 'Subtotal do produto', 'Valor Total');
         if (valor <= 0) return;
         if (!orderTotals[oid]) {
           orderTotals[oid] = {
@@ -8150,7 +8815,7 @@ function importShopee(event) {
           return 0;
         }
 
-        const valorTotal = numCol(row, 'Valor Total', 'Subtotal do produto');
+        const valorTotal = numCol(row, 'Subtotal do produto', 'Valor Total');
 
         // Taxas: a Shopee repete a taxa do PEDIDO INTEIRO em cada linha.
         // Rateamos proporcionalmente ao valor deste item dentro do pedido.
