@@ -3144,14 +3144,14 @@
 // Taxas reais da Shopee (extraídas dos pedidos reais)
 const SHOPEE_COMMISSION  = 0.18;  // 18% comissão bruta
 const SHOPEE_TRANSACTION = 0.02;  // 2% taxa de transação
-const SHOPEE_ITEM_FEE    = 4.00;  // R$ 4,00 fixo por item
+const SHOPEE_ITEM_FEE    = 4.50;  // R$ 4,50 fixo por UNIDADE (confirmado no relatório de rendimento de out/2026)
 const SHOPEE_DEVOL_FEE   = 0.49;  // R$ 0,49 Devolução Fácil Shopee
 
 // Tabela de taxas da Shopee por faixa de preço — substitui as constantes fixas acima.
 // Seed com uma única faixa (0 a sem-limite) usando os mesmos valores das constantes,
 // pra não mudar nenhum cálculo até você editar/adicionar faixas reais em Configurações.
 const DEFAULT_SHOPEE_FEE_TIERS = [
-  { id: 'tier-default', min: 0, max: null, commission: 18, transaction: 2, itemFee: 4.00, devolFee: 0.49 },
+  { id: 'tier-default', min: 0, max: null, commission: 18, transaction: 2, itemFee: 4.50, devolFee: 0.49 },
 ];
 
 const DEFAULT_FILAMENTS = [
@@ -3218,6 +3218,16 @@ let recurringCosts = loadLocal('pl_recurring_costs', []);
 let wasteRate     = loadLocal('pl_waste_rate',     { enabled: false, percent: 10 });
 let lastAutoLaunch = loadLocal('pl_last_auto_launch', '');
 let shopeeFeeTiers = loadLocal('pl_shopee_fee_tiers', DEFAULT_SHOPEE_FEE_TIERS);
+// Migração única: a taxa por item real é R$ 4,50 por unidade (era 4,00 por pedido). Só mexe na faixa padrão intacta.
+try {
+  if (!localStorage.getItem('pl_fee_item_450')) {
+    if (shopeeFeeTiers.length === 1 && shopeeFeeTiers[0].id === 'tier-default' && shopeeFeeTiers[0].itemFee === 4) {
+      shopeeFeeTiers[0].itemFee = 4.5;
+      saveLocal('pl_shopee_fee_tiers', shopeeFeeTiers);
+    }
+    localStorage.setItem('pl_fee_item_450', '1');
+  }
+} catch (e) {}
 let products  = loadLocal('pl_products',  DEFAULT_PRODUCTS);
 let sales     = loadLocal('pl_sales',     DEFAULT_SALES);
 let expenses  = loadLocal('pl_expenses',  []);
@@ -3879,7 +3889,7 @@ function getWasteMultiplier() {
   return 1 / (1 - wasteRate.percent / 100);
 }
 
-// calcCost: custo por unidade (taxas fixas divididas pela qty do pedido)
+// calcCost: custo por unidade (taxa por item é por unidade; Devolução Fácil dividida pela qty do pedido)
 function calcCost(p, price, qty, overrideGrams) {
   qty = qty || 1;
   const wm          = getWasteMultiplier();
@@ -3890,7 +3900,7 @@ function calcCost(p, price, qty, overrideGrams) {
   const prodWithWaste = baseProd * wm;
   const commission  = price * fees.commission;
   const transaction = price * fees.transaction;
-  const itemFeeUnit  = fees.itemFee / qty;
+  const itemFeeUnit  = fees.itemFee; // taxa por item cobrada por UNIDADE
   const devolFeeUnit = fees.devolFee / qty;
   const totalFees    = commission + transaction + itemFeeUnit + devolFeeUnit;
   const total        = prodWithWaste + totalFees;
@@ -4004,7 +4014,7 @@ function calcProfitTotal(p, price, qty, shopeeIncome, overrideGrams) {
   } else {
     const commission  = price * fees.commission * qty;
     const transaction = price * fees.transaction * qty;
-    totalFees   = commission + transaction + fees.itemFee + fees.devolFee;
+    totalFees   = commission + transaction + fees.itemFee * qty + fees.devolFee;
     totalCosts  = prodCost + totalFees;
     totalProfit = totalRevenue - totalCosts;
   }
@@ -4017,12 +4027,12 @@ function calcProfitTotal(p, price, qty, shopeeIncome, overrideGrams) {
 // Antes cada tela tinha sua própria estimativa fixa (20% + R$ 4,49) que ignorava a tabela de
 // faixas e a taxa própria do produto — o lucro (calcProfitTotal) e a coluna "renda" podiam divergir.
 // estimateShopeeIncome usa exatamente as mesmas taxas (getProductFees) do cálculo de lucro estimado.
-// A taxa fixa por item (itemFee) e a de devolução valem por PEDIDO, igual ao calcProfitTotal/calcCost.
+// A taxa por item (itemFee) é cobrada por UNIDADE; a Devolução Fácil, por PEDIDO (igual ao calcProfitTotal/calcCost).
 function estimateShopeeIncome(p, price, qty) {
   qty = qty || 1;
   const f = getProductFees(p, price);
   const revenue = price * qty;
-  const fees = revenue * (f.commission + f.transaction) + f.itemFee + f.devolFee;
+  const fees = revenue * (f.commission + f.transaction) + f.itemFee * qty + f.devolFee;
   return Math.max(0, revenue - fees);
 }
 function hasRealShopeeIncome(s) { return s._shopeeTotal > 0; }
@@ -8358,7 +8368,7 @@ function addShopeeFeeTierRow() {
   const maxKnown = shopeeFeeTiers.reduce((m, t) => t.max != null ? Math.max(m, t.max) : m, 0);
   shopeeFeeTiers.push({
     id: Date.now().toString(), min: maxKnown, max: null,
-    commission: 18, transaction: 2, itemFee: 4.00, devolFee: 0.49,
+    commission: 18, transaction: 2, itemFee: 4.50, devolFee: 0.49,
   });
   renderShopeeTiersList();
 }
