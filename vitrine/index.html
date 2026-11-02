@@ -343,11 +343,11 @@ footer .logo{justify-content:center;margin-bottom:6px;font-size:18px}
 
   function render(){
     grid.innerHTML="";
-    PRODUCTS.filter(p=>current==="Todos"||p.cat===current).forEach(p=>{
+    PRODUCTS.filter(p=>current==="Todos"||p.cat===current).forEach((p,idx)=>{
       const min=Math.min(...p.options.map(o=>o.p));
       const many=p.options.length>1 && new Set(p.options.map(o=>o.p)).size>1;
       const b=document.createElement("button"); b.type="button"; b.className="card";
-      b.innerHTML=`<div class="ph"><img src="${photoSrc(p.photos[0],true)}" alt="${esc(p.name)}" loading="lazy">${p.badge?`<span class="badge">${p.badge}</span>`:""}</div>
+      b.innerHTML=`<div class="ph"><img src="${photoSrc(p.photos[0],true)}" alt="${esc(p.name)}"${idx>5?' loading="lazy"':""}>${p.badge?`<span class="badge">${p.badge}</span>`:""}</div>
         <div class="body"><span class="nm">${esc(p.name)}</span><span class="pr">${many?"<small>a partir de</small>":""}<strong>${brl(min)}</strong></span></div>`;
       b.addEventListener("click",()=>open(p));
       grid.appendChild(b);
