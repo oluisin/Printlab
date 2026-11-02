@@ -26,7 +26,7 @@
 }
 *{box-sizing:border-box}
 html{scroll-behavior:smooth}
-@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}*{transition:none!important;animation:none!important}}
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}*,*::before,*::after{transition:none!important;animation:none!important}}
 body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--font);font-size:16px;line-height:1.5;-webkit-font-smoothing:antialiased}
 img{max-width:100%}
 [hidden]{display:none!important}
@@ -124,6 +124,42 @@ section.block{padding-block:40px 8px}
 .shopee{margin-top:14px}
 footer{padding-block:40px calc(32px + env(safe-area-inset-bottom,0px));color:var(--muted);font-size:13px;text-align:center}
 footer .logo{justify-content:center;margin-bottom:6px;font-size:18px}
+
+/* ---------- movimento ---------- */
+.hero{position:relative;isolation:isolate}
+main{overflow-x:clip}
+.hero::before,.hero::after{content:"";position:absolute;z-index:-1;border-radius:50%;filter:blur(60px);opacity:.35;pointer-events:none}
+.hero::before{width:260px;height:260px;background:var(--pink);top:-40px;right:-60px;animation:drift 14s ease-in-out infinite alternate}
+.hero::after{width:220px;height:220px;background:var(--cyan);top:60px;left:-90px;animation:drift 18s ease-in-out infinite alternate-reverse}
+@keyframes drift{from{transform:translate(0,0) scale(1)}to{transform:translate(40px,30px) scale(1.15)}}
+.hero h1 em{background:linear-gradient(90deg,var(--pink),var(--cyan),var(--gold),var(--pink));background-size:300% 100%;-webkit-background-clip:text;background-clip:text;animation:shine 6s linear infinite}
+@keyframes shine{to{background-position:300% 0}}
+.hero .eyebrow,.hero h1,.hero p{animation:rise .7s cubic-bezier(.2,.8,.2,1) both}
+.hero h1{animation-delay:.08s}.hero p{animation-delay:.16s}
+.filters .chip{animation:rise .5s cubic-bezier(.2,.8,.2,1) both;animation-delay:calc(.2s + var(--i,0)*.05s)}
+@keyframes rise{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+.card{animation:rise .55s cubic-bezier(.2,.8,.2,1) backwards;animation-delay:calc(var(--i,0)*.06s)}
+.card .ph{overflow:hidden}
+.card .ph img{transition:transform .5s cubic-bezier(.2,.8,.2,1)}
+.card:hover{box-shadow:0 10px 30px -12px color-mix(in srgb,var(--pink) 60%,transparent)}
+.card:hover .ph img{transform:scale(1.06)}
+.card:active{transform:scale(.98)}
+.badge{animation:pop .5s cubic-bezier(.3,1.6,.5,1) both;animation-delay:calc(.3s + var(--i,0)*.06s)}
+@keyframes pop{from{transform:scale(0)}to{transform:scale(1)}}
+.btn-wa{position:relative;overflow:hidden;animation:glow 2.6s ease-in-out infinite}
+@keyframes glow{0%,100%{box-shadow:0 0 0 0 color-mix(in srgb,var(--pink) 55%,transparent)}50%{box-shadow:0 0 0 8px transparent}}
+.btn-wa::after{content:"";position:absolute;top:0;left:-60%;width:40%;height:100%;background:linear-gradient(100deg,transparent,rgba(255,255,255,.35),transparent);transform:skewX(-20deg);animation:sweep 3.5s ease-in-out infinite}
+@keyframes sweep{0%,60%{left:-60%}100%{left:130%}}
+dialog[open]{animation:sheetIn .35s cubic-bezier(.2,.8,.2,1)}
+@media (max-width:699px){@keyframes sheetIn{from{transform:translateY(40px);opacity:0}to{transform:none;opacity:1}}}
+@media (min-width:700px){@keyframes sheetIn{from{transform:scale(.96);opacity:0}to{transform:none;opacity:1}}}
+dialog[open]::backdrop{animation:fadeIn .3s ease}
+@keyframes fadeIn{from{opacity:0}}
+.stage img.swap{animation:fadeIn .35s ease}
+.price strong.bump{animation:bump .35s cubic-bezier(.3,1.6,.5,1)}
+@keyframes bump{50%{transform:scale(1.08)}}
+.steps li{transition:transform .2s,border-color .2s}
+.steps li:hover{transform:translateY(-3px);border-color:var(--cyan)}
 </style>
 </head>
 <body>
@@ -335,7 +371,7 @@ footer .logo{justify-content:center;margin-bottom:6px;font-size:18px}
   let current="Todos";
   CATS.forEach(c=>{
     if(c!=="Todos" && !PRODUCTS.some(p=>p.cat===c)) return;
-    const b=document.createElement("button"); b.type="button"; b.className="chip"; b.textContent=c;
+    const b=document.createElement("button"); b.type="button"; b.className="chip"; b.textContent=c; b.style.setProperty("--i",filters.children.length);
     b.setAttribute("aria-pressed",String(c===current));
     b.addEventListener("click",()=>{current=c;[...filters.children].forEach(x=>x.setAttribute("aria-pressed",String(x===b)));render()});
     filters.appendChild(b);
@@ -346,7 +382,7 @@ footer .logo{justify-content:center;margin-bottom:6px;font-size:18px}
     PRODUCTS.filter(p=>current==="Todos"||p.cat===current).forEach((p,idx)=>{
       const min=Math.min(...p.options.map(o=>o.p));
       const many=p.options.length>1 && new Set(p.options.map(o=>o.p)).size>1;
-      const b=document.createElement("button"); b.type="button"; b.className="card";
+      const b=document.createElement("button"); b.type="button"; b.className="card"; b.style.setProperty("--i",idx);
       b.innerHTML=`<div class="ph"><img src="${photoSrc(p.photos[0],true)}" alt="${esc(p.name)}"${idx>5?' loading="lazy"':""}>${p.badge?`<span class="badge">${p.badge}</span>`:""}</div>
         <div class="body"><span class="nm">${esc(p.name)}</span><span class="pr">${many?"<small>a partir de</small>":""}<strong>${brl(min)}</strong></span></div>`;
       b.addEventListener("click",()=>open(p));
@@ -359,7 +395,7 @@ footer .logo{justify-content:center;margin-bottom:6px;font-size:18px}
   const $=id=>document.getElementById(id);
   let state={};
   function showPhoto(i){
-    const f=state.p.photos[i]; $("d-img").src=photoSrc(f); $("d-img").alt=state.p.name;
+    const f=state.p.photos[i]; const im=$("d-img"); im.classList.remove("swap"); void im.offsetWidth; im.classList.add("swap"); im.src=photoSrc(f); $("d-img").alt=state.p.name;
     const tag=$("d-tag"); tag.hidden=!f[1]; tag.textContent=f[1]||""; tag.classList.toggle("real",f[1]==="Foto real");
     [...$("d-thumbs").children].forEach((t,k)=>t.setAttribute("aria-pressed",String(k===i)));
   }
@@ -374,7 +410,7 @@ footer .logo{justify-content:center;margin-bottom:6px;font-size:18px}
       cols.forEach(c=>{const b=document.createElement("button");b.type="button";b.className="chip";b.setAttribute("role","radio");b.textContent=c;b.setAttribute("aria-checked",String(c===state.c));b.addEventListener("click",()=>{state.c=c;update()});$("d-cols").appendChild(b)});
     } else state.c=null;
     const price=o.p+((p.colorExtra&&state.c&&p.colorExtra[state.c])||0);
-    $("d-price").textContent=brl(price);
+    const pe=$("d-price"); if(pe.textContent!==brl(price)){pe.textContent=brl(price); pe.classList.remove("bump"); void pe.offsetWidth; pe.classList.add("bump");}
     const colorIsOption=!!(p.colorsFor&&p.colorsFor[state.o]);
     const what=colorIsOption?`${p.name} – ${state.c}`:(p.options.length>1?`${p.name} – ${o.n}`:p.name);
     const cor=state.c&&!colorIsOption?`, cor: ${state.c.replace(/ \(.*\)/,"")}`:"";
