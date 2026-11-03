@@ -165,17 +165,29 @@ dialog[open]::backdrop{animation:fadeIn .3s ease}
 .topnav{display:flex;gap:6px}
 .atelie .eyebrow{margin-bottom:6px}
 .atelie-lead{color:var(--muted);max-width:60ch;margin:-6px 0 18px}
-.carousel{position:relative;border-radius:var(--r);overflow:hidden;border:1px solid var(--line);background:var(--surface)}
-.track{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;scroll-behavior:smooth;scrollbar-width:none}
+.carousel{position:relative;margin-inline:calc(-1 * max(16px,env(safe-area-inset-left,0px)));--w:min(76vw,360px)}
+.track{display:flex;gap:14px;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;padding:18px calc(50% - var(--w) / 2) 26px;
+  -webkit-mask-image:linear-gradient(90deg,transparent 0,#000 7%,#000 93%,transparent 100%);mask-image:linear-gradient(90deg,transparent 0,#000 7%,#000 93%,transparent 100%)}
 .track::-webkit-scrollbar{display:none}
-.slide{flex:0 0 100%;scroll-snap-align:center;aspect-ratio:1/1;max-height:560px;margin:0}
-@media (min-width:700px){.slide{flex-basis:50%}}
-@media (min-width:1000px){.slide{flex-basis:33.333%}}
-.slide img{width:100%;height:100%;object-fit:cover;display:block}
-.carousel .nav{position:absolute;top:50%;transform:translateY(-50%);width:42px;height:42px;border-radius:50%;border:1px solid var(--line);background:color-mix(in srgb,var(--bg) 75%,transparent);color:var(--fg);font:700 26px/1 var(--font);cursor:pointer;display:grid;place-items:center;padding-bottom:3px}
-.carousel .nav:hover{border-color:var(--cyan)}
-.carousel .prev{left:10px}.carousel .next{right:10px}
-.dots{display:flex;justify-content:center;gap:8px;margin-top:12px}
+.slide{position:relative;flex:0 0 var(--w);scroll-snap-align:center;aspect-ratio:4/5;margin:0;border-radius:22px;overflow:hidden;
+  transform:scale(.88) rotate(var(--tilt,0deg));opacity:.5;filter:saturate(.7);
+  transition:transform .5s cubic-bezier(.2,.8,.2,1),opacity .5s,filter .5s,box-shadow .5s}
+.slide:nth-child(odd){--tilt:-2deg}.slide:nth-child(even){--tilt:2deg}
+.slide img{width:100%;height:100%;object-fit:cover;display:block;transition:transform 6s ease}
+.slide::after{content:"";position:absolute;inset:0;border-radius:inherit;padding:2px;pointer-events:none;
+  background:linear-gradient(140deg,var(--pink),var(--cyan) 55%,var(--gold));opacity:0;transition:opacity .5s;
+  -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude}
+.slide .chip-hand{position:absolute;left:12px;bottom:12px;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;
+  padding:5px 10px;border-radius:999px;background:rgba(12,10,18,.75);color:var(--gold);backdrop-filter:blur(4px);opacity:0;transform:translateY(6px);transition:opacity .4s .15s,transform .4s .15s}
+.slide.is-active{transform:none;opacity:1;filter:none;box-shadow:0 18px 40px -14px color-mix(in srgb,var(--pink) 55%,transparent),0 0 0 1px var(--line)}
+.slide.is-active::after{opacity:1}
+.slide.is-active img{transform:scale(1.06)}
+.slide.is-active .chip-hand{opacity:1;transform:none}
+.carousel .nav{position:absolute;top:50%;transform:translateY(-50%);z-index:2;width:44px;height:44px;border-radius:50%;border:1px solid var(--line);background:color-mix(in srgb,var(--bg) 70%,transparent);backdrop-filter:blur(6px);color:var(--fg);font:700 26px/1 var(--font);cursor:pointer;display:grid;place-items:center;padding-bottom:3px;transition:border-color .2s,transform .2s}
+.carousel .nav:hover{border-color:var(--cyan);transform:translateY(-50%) scale(1.08)}
+.carousel .prev{left:max(10px,env(safe-area-inset-left,0px))}.carousel .next{right:max(10px,env(safe-area-inset-right,0px))}
+@media (max-width:699px){.carousel .nav{display:none}}
+.dots{display:flex;justify-content:center;gap:8px;margin-top:2px}
 .dots button{width:9px;height:9px;padding:0;border-radius:999px;border:0;background:var(--line);cursor:pointer;transition:width .25s,background .25s}
 .dots button[aria-selected="true"]{width:26px;background:var(--pink)}
 .atelie-cta{margin-top:20px;padding:18px;border-radius:var(--r);border:1px solid color-mix(in srgb,var(--pink) 45%,var(--line));background:linear-gradient(135deg,color-mix(in srgb,var(--pink) 12%,var(--surface)),var(--surface));display:grid;gap:12px}
@@ -503,16 +515,21 @@ dialog[open]::backdrop{animation:fadeIn .3s ease}
       d.addEventListener("click",()=>{go(i);stop()}); dots.appendChild(d);
     });
     const slides=[...track.children];
-    const cur=()=>Math.round(track.scrollLeft/slides[0].offsetWidth);
-    const perView=()=>Math.max(1,Math.round(track.clientWidth/slides[0].offsetWidth));
-    const go=i=>{const max=slides.length-perView(); if(i>max)i=0; if(i<0)i=max; track.scrollTo({left:i*slides[0].offsetWidth,behavior:"smooth"})};
-    const mark=()=>{const c=cur();[...dots.children].forEach((d,k)=>d.setAttribute("aria-selected",String(k===c)))};
-    track.addEventListener("scroll",()=>requestAnimationFrame(mark),{passive:true}); mark();
+    slides.forEach(f=>f.insertAdjacentHTML("beforeend",'<span class="chip-hand">Feito por nós</span>'));
+    const cur=()=>{const mid=track.scrollLeft+track.clientWidth/2;let best=0,dist=1e9;
+      slides.forEach((sl,k)=>{const c=sl.offsetLeft+sl.offsetWidth/2,d=Math.abs(c-mid);if(d<dist){dist=d;best=k}});return best};
+    const go=i=>{const n=slides.length;i=(i+n)%n;const sl=slides[i];
+      track.scrollTo({left:sl.offsetLeft-(track.clientWidth-sl.offsetWidth)/2,behavior:reduce?"auto":"smooth"})};
+    const mark=()=>{const c=cur();slides.forEach((sl,k)=>sl.classList.toggle("is-active",k===c));
+      [...dots.children].forEach((d,k)=>d.setAttribute("aria-selected",String(k===c)))};
+    let raf=0; track.addEventListener("scroll",()=>{cancelAnimationFrame(raf);raf=requestAnimationFrame(mark)},{passive:true});
+    slides.forEach((sl,k)=>sl.addEventListener("click",()=>{if(!sl.classList.contains("is-active")){go(k);stop()}}));
+    const reduce=window.matchMedia&&matchMedia("(prefers-reduced-motion: reduce)").matches;
+    requestAnimationFrame(()=>{go(1);mark()});
     document.getElementById("c-prev").addEventListener("click",()=>{go(cur()-1);stop()});
     document.getElementById("c-next").addEventListener("click",()=>{go(cur()+1);stop()});
     // avanço automático suave; para quando a pessoa interage ou prefere menos movimento
     let timer=null;
-    const reduce=window.matchMedia&&matchMedia("(prefers-reduced-motion: reduce)").matches;
     function start(){ if(reduce||timer) return; timer=setInterval(()=>{ if(!document.hidden) go(cur()+1) },4000) }
     function stop(){ clearInterval(timer); timer=null }
     const car=document.getElementById("carousel");
