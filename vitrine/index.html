@@ -255,6 +255,11 @@ dialog[open]::backdrop{animation:fadeIn .3s ease}
      options:[{n:"Presépio Sagrada Família",d:"Peça única · aprox. 11,5 cm",p:33.90}],
      specs:[["Medidas","Aprox. 11,5 cm de altura"],["Peça","Única: José, Maria e o Menino Jesus"],["Material","PLA marfim, de origem vegetal"],["Uso","Decorativo, não é brinquedo"]],
      shopee:SP("Pres%C3%A9pio-Minimalista-Sagrada-Fam%C3%ADlia-Decora%C3%A7%C3%A3o-Natal-Pe%C3%A7a-%C3%9Anica-Impress%C3%A3o-3D-Enfeite-Mesa",58221175674)},
+    {id:"renas", cat:"Natal", badge:"Natal", name:"Trio de Renas Minimalistas",
+     lead:"Três renas de traço simples: duas em pé e uma deitada. Lembrancinha perfeita e enfeite delicado para a mesa ou a estante.",
+     photos:[["img/renas-1.jpg","Imagem ilustrativa"],["img/renas-2.jpg","Foto real"],["img/renas-3.jpg","Foto real"]],
+     options:[{n:"Trio de renas",d:"2 em pé + 1 deitada · a mais alta com aprox. 5 cm",p:19.90}],
+     specs:[["Kit","3 renas: 2 em pé e 1 deitada"],["Medidas","A mais alta com aprox. 5 cm"],["Material","PLA marfim, de origem vegetal"],["Uso","Decorativo, não é brinquedo. Contém peças pequenas"]]},
     {id:"ganchos", cat:"Organização", badge:"Mais vendido", name:"Kit 5 Ganchos de Parede Minimalista",
      lead:"Ganchos com design limpo e parafuso escondido. Organizam chaves, bolsas e toalhas sem poluir a parede.",
      photos:[[CDN("br-11134207-820m6-mt9z1rly5yir87")],[CDN("br-11134207-820me-mm3xabpb6vif6a")],[CDN("br-11134207-820mh-mm3xabp82i2o4a")],[CDN("br-11134207-820l6-mm3xabpg82rodc")]],
@@ -420,7 +425,7 @@ dialog[open]::backdrop{animation:fadeIn .3s ease}
   function open(p){
     state={p,o:0,c:null};
     $("d-title").textContent=p.name; $("d-lead").textContent=p.lead;
-    $("d-shopee").href=p.shopee;
+    $("d-shopee").parentElement.hidden=!p.shopee; if(p.shopee) $("d-shopee").href=p.shopee;
     const th=$("d-thumbs"); th.innerHTML=""; th.hidden=p.photos.length<2;
     p.photos.forEach((f,i)=>{const b=document.createElement("button");b.type="button";b.innerHTML=`<img src="${photoSrc(f,true)}" alt="Foto ${i+1} de ${esc(p.name)}">`;b.addEventListener("click",()=>showPhoto(i));th.appendChild(b)});
     showPhoto(0);
