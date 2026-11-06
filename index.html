@@ -1238,6 +1238,7 @@
     <a onclick="navigate('dashboard')" data-page="dashboard">Dashboard</a>
     <a onclick="navigate('products')" data-page="products">Produtos</a>
     <a onclick="navigate('sales')" data-page="sales">Vendas</a>
+    <a onclick="navigate('quote')" data-page="quote">Encomendas</a>
     <a onclick="navigate('expenses')" data-page="expenses">Custos</a>
     <a onclick="navigate('receipts')" data-page="receipts">Recebimentos</a>
     <div style="position:relative">
@@ -1281,6 +1282,9 @@
         </button>
         <button class="nav-btn" onclick="navigate('sales')">
           <i class="ti ti-shopping-cart nb-icon" aria-hidden="true"></i> Vendas
+        </button>
+        <button class="nav-btn" onclick="navigate('quote')">
+          <i class="ti ti-calculator nb-icon" aria-hidden="true"></i> Encomendas
         </button>
         <button class="nav-btn" onclick="navigate('production')">
           <i class="ti ti-clipboard-list nb-icon" aria-hidden="true"></i> Fila de Produção
@@ -1415,6 +1419,10 @@
       <button class="more-item" onclick="navMore('deadlines')">
         <span class="more-icon"><i class="ti ti-clock-exclamation ic"></i></span>
         <span class="more-label">Prazos de Envio</span>
+      </button>
+      <button class="more-item" onclick="navMore('quote')">
+        <span class="more-icon"><i class="ti ti-calculator ic"></i></span>
+        <span class="more-label">Encomendas</span>
       </button>
     </div>
 
@@ -1865,6 +1873,101 @@
   </div>
 
   <!-- ══════════════ SETTINGS ══════════════ -->
+  <div class="page" id="page-quote">
+    <div class="page-header">
+      <div>
+        <div class="page-title">Encomendas</div>
+        <div class="page-sub">Calculadora de orçamento para peças sob encomenda</div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-bottom:16px">
+      <div class="field">
+        <label>Peça / cliente (opcional)</label>
+        <input id="qt-desc" placeholder="Ex: Action figure personalizada" oninput="quoteCalc()" />
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div class="field">
+          <label>Quantidade</label>
+          <input id="qt-qty" type="number" inputmode="numeric" min="1" step="1" value="1" oninput="quoteCalc()" />
+        </div>
+        <div class="field">
+          <label>Prazo (opcional)</label>
+          <input id="qt-deadline" placeholder="Ex: 7 dias" oninput="quoteCalc()" />
+        </div>
+      </div>
+
+      <div class="field">
+        <label>Filamento</label>
+        <select id="qt-fil" onchange="quoteCalc()"></select>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div class="field">
+          <label>Peso por peça (g)</label>
+          <input id="qt-grams" type="number" inputmode="decimal" min="0" step="any" placeholder="0" oninput="quoteCalc()" />
+          <div class="field-hint">Do Bambu Studio, com suportes</div>
+        </div>
+        <div class="field">
+          <label>Tempo por peça (h)</label>
+          <input id="qt-hours" type="number" inputmode="decimal" min="0" step="any" placeholder="0" oninput="quoteCalc()" />
+          <div class="field-hint">Ex: 3,5 = 3h30</div>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div class="field">
+          <label>Pintura (R$/peça)</label>
+          <input id="qt-paint" type="number" inputmode="decimal" min="0" step="0.01" value="0" oninput="quoteCalc()" />
+        </div>
+        <div class="field">
+          <label>Modelagem (R$)</label>
+          <input id="qt-design" type="number" inputmode="decimal" min="0" step="0.01" value="0" oninput="quoteCalc()" />
+        </div>
+      </div>
+      <div class="field">
+        <label>Embalagem (uma por pedido)</label>
+        <select id="qt-pkg" onchange="quoteCalc()"></select>
+      </div>
+    </div>
+
+    <div class="card" style="margin-bottom:16px">
+      <div style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:12px;font-weight:600">Preço</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div class="field">
+          <label>Margem desejada (%)</label>
+          <input id="qt-margin" type="number" inputmode="decimal" min="0" max="95" step="1" oninput="quoteCalc()" />
+        </div>
+        <div class="field">
+          <label>Máquina (R$/h)</label>
+          <input id="qt-machine" type="number" inputmode="decimal" min="0" step="0.01" oninput="quoteCalc()" />
+          <div class="field-hint">Energia + desgaste</div>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div class="field">
+          <label>Taxa do Pix (%)</label>
+          <input id="qt-pix" type="number" inputmode="decimal" min="0" max="20" step="0.01" oninput="quoteCalc()" />
+          <div class="field-hint">0 se for direto na chave</div>
+        </div>
+        <div class="field">
+          <label>Frete (R$)</label>
+          <input id="qt-ship" type="number" inputmode="decimal" min="0" step="0.01" placeholder="Pelo CEP" oninput="quoteCalc()" />
+          <div class="field-hint">Pago à parte pelo cliente</div>
+        </div>
+      </div>
+      <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text2);cursor:pointer">
+        <input type="checkbox" id="qt-round" onchange="quoteCalc()" /> Arredondar o total para terminar em ,90
+      </label>
+    </div>
+
+    <div class="card" id="qt-result" style="margin-bottom:16px"></div>
+
+    <div class="card" id="qt-text-card" style="display:none;margin-bottom:16px">
+      <div style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px;font-weight:600">Texto para o WhatsApp</div>
+      <textarea id="qt-text" readonly rows="8" style="width:100%;resize:vertical"></textarea>
+      <button class="btn-primary" id="qt-copy-btn" onclick="quoteCopy()" style="width:100%;justify-content:center;margin-top:10px"><i class="ti ti-copy ic"></i> Copiar orçamento</button>
+    </div>
+  </div>
+
   <div class="page" id="page-settings">
     <div class="page-header">
       <div>
@@ -3239,6 +3342,7 @@ let monthlyGoal    = loadLocal('pl_monthly_goal',    { enabled: false, type: 're
 let priceHistory   = loadLocal('pl_price_history',   []);
 let recurringCosts = loadLocal('pl_recurring_costs', []);
 let wasteRate     = loadLocal('pl_waste_rate',     { enabled: false, percent: 10 });
+let quoteCfg      = loadLocal('pl_quote_cfg',      { machineHour: 2, margin: 40, pix: 0, round: true });
 let lastAutoLaunch = loadLocal('pl_last_auto_launch', '');
 let shopeeFeeTiers = loadLocal('pl_shopee_fee_tiers', DEFAULT_SHOPEE_FEE_TIERS);
 // Migração única: a taxa por item real é R$ 4,50 por unidade (era 4,00 por pedido). Só mexe na faixa padrão intacta.
@@ -3312,7 +3416,7 @@ async function pushToFirebase() {
   if (!window._db || !window._user || !_fbLoaded) return;
   try {
     await window._setDoc(window._doc(window._db, 'store', 'data'), {
-      filaments, packaging, marginAlerts, monthlyGoal, recurringCosts, priceHistory, wasteRate, lastAutoLaunch, products, sales, expenses, shopeeFeeTiers,
+      filaments, packaging, marginAlerts, monthlyGoal, recurringCosts, priceHistory, wasteRate, quoteCfg, lastAutoLaunch, products, sales, expenses, shopeeFeeTiers,
       updatedAt: new Date().toISOString()
     });
     showSyncStatus('<i class="ti ti-circle-check ic"></i> Sincronizado', 'var(--green)');
@@ -3344,6 +3448,7 @@ async function pullFromFirebase() {
       priceHistory   = data.priceHistory   || priceHistory;
       wasteRate      = data.wasteRate      || wasteRate;
       shopeeFeeTiers = data.shopeeFeeTiers || shopeeFeeTiers;
+      quoteCfg       = data.quoteCfg       || quoteCfg;
       // Mês do último lançamento automático de custos fixos — compartilhado entre aparelhos
       lastAutoLaunch = data.lastAutoLaunch || lastAutoLaunch;
       saveLocal('pl_last_auto_launch', lastAutoLaunch);
@@ -3358,6 +3463,7 @@ async function pullFromFirebase() {
       saveLocal('pl_price_history',    priceHistory);
       saveLocal('pl_waste_rate',       wasteRate);
       saveLocal('pl_shopee_fee_tiers', shopeeFeeTiers);
+      saveLocal('pl_quote_cfg',        quoteCfg);
       // Edições locais feitas antes do carregamento foram substituídas pela nuvem
       _pendingPush = false;
       // Reaplica o DAS do MEI caso o estado vindo do Firebase ainda não o tenha
@@ -4222,7 +4328,7 @@ function navigate(page) {
 
   // Expand sidebar group containing this page
   const pageGroups = {
-    home: 'ng-principal', dashboard: 'ng-principal', products: 'ng-principal', sales: 'ng-principal', production: 'ng-principal',
+    home: 'ng-principal', dashboard: 'ng-principal', products: 'ng-principal', sales: 'ng-principal', production: 'ng-principal', quote: 'ng-principal',
     deadlines: 'ng-principal',
     expenses: 'ng-financeiro', receipts: 'ng-financeiro', breakeven: 'ng-financeiro', projection: 'ng-financeiro',
     ranking: 'ng-analises', seasonality: 'ng-analises', hours: 'ng-analises', analysis: 'ng-analises', pricehistory: 'ng-analises', calendar: 'ng-analises', score: 'ng-analises',
@@ -4244,6 +4350,7 @@ function renderPage(page) {
   if (page === 'dashboard') renderDashboard();
   if (page === 'products')  renderProducts();
   if (page === 'sales')     renderSales();
+  if (page === 'quote')     renderQuote();
   if (page === 'production') renderProductionQueue();
   if (page === 'deadlines') renderDeadlines();
   if (page === 'expenses')  renderExpenses();
@@ -8139,6 +8246,161 @@ async function pullReceipts() {
 }
 
 // ══════════════════════════════════════════
+//  CALCULADORA DE ENCOMENDAS
+// ══════════════════════════════════════════
+// Orçamento de peça sob encomenda (venda direta, sem taxa da Shopee).
+// Reaproveita o preço do filamento por kg, as embalagens e a taxa de perda já cadastrados.
+// Preço = custo ÷ (1 − margem − taxa do Pix). A margem é sobre o preço de venda, igual ao resto do painel.
+// A taxa de perda (se ligada em Configurações) incide sobre filamento, máquina e pintura; modelagem e embalagem ficam de fora.
+const QUOTE_CFG_DEFAULT = { machineHour: 2, margin: 40, pix: 0, round: true };
+
+function _quoteEsc(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+function renderQuote() {
+  const cfg = Object.assign({}, QUOTE_CFG_DEFAULT, quoteCfg || {});
+
+  const filSel = document.getElementById('qt-fil');
+  const prevFil = filSel.value;
+  filSel.innerHTML = filaments.map(f => `<option value="${_quoteEsc(f.id)}">${_quoteEsc(f.name)} — ${fmt(f.pricePerKg)}/kg</option>`).join('');
+  if (prevFil && filaments.some(f => f.id === prevFil)) filSel.value = prevFil;
+
+  const pkgSel = document.getElementById('qt-pkg');
+  const prevPkg = pkgSel.value;
+  pkgSel.innerHTML = '<option value="">Sem embalagem</option>' +
+    packaging.map(p => `<option value="${_quoteEsc(p.id)}">${_quoteEsc(p.name)} — ${fmt(p.price)}</option>`).join('');
+  if (prevPkg && packaging.some(p => p.id === prevPkg)) pkgSel.value = prevPkg;
+
+  document.getElementById('qt-machine').value = cfg.machineHour;
+  document.getElementById('qt-margin').value  = cfg.margin;
+  document.getElementById('qt-pix').value     = cfg.pix;
+  document.getElementById('qt-round').checked = !!cfg.round;
+
+  quoteCalc();
+}
+
+function quoteCalc() {
+  const num = id => { const v = parseFloat(document.getElementById(id).value); return isNaN(v) || v < 0 ? 0 : v; };
+
+  // Configuração (sincroniza com o Firebase; só grava se mudou)
+  const cfg = {
+    machineHour: num('qt-machine'),
+    margin:      num('qt-margin'),
+    pix:         num('qt-pix'),
+    round:       document.getElementById('qt-round').checked,
+  };
+  if (JSON.stringify(cfg) !== JSON.stringify(quoteCfg)) {
+    quoteCfg = cfg;
+    save('pl_quote_cfg', quoteCfg);
+  }
+
+  const qty     = Math.max(1, Math.round(num('qt-qty')) || 1);
+  const grams   = num('qt-grams');
+  const hours   = num('qt-hours');
+  const paint   = num('qt-paint');
+  const design  = num('qt-design');
+  const ship    = num('qt-ship');
+  const desc    = document.getElementById('qt-desc').value.trim();
+  const deadline = document.getElementById('qt-deadline').value.trim();
+
+  const fil    = getFilament(document.getElementById('qt-fil').value);
+  const pkgId  = document.getElementById('qt-pkg').value;
+  const pkgObj = packaging.find(p => p.id === pkgId);
+  const pkg    = pkgObj ? pkgObj.price : 0;
+
+  const out = document.getElementById('qt-result');
+  const textCard = document.getElementById('qt-text-card');
+
+  const material = grams / 1000 * (fil ? fil.pricePerKg : 0) * qty;
+  const machine  = hours * cfg.machineHour * qty;
+  const paintTot = paint * qty;
+  const wm       = getWasteMultiplier();
+  const production = (material + machine + paintTot) * wm;
+  const waste      = production - (material + machine + paintTot);
+  const cost       = production + design + pkg;
+
+  if (cost <= 0) {
+    out.innerHTML = '<div style="font-size:13px;color:var(--text3);line-height:1.6">Preencha o peso e o tempo de impressão da peça para ver o preço.</div>';
+    textCard.style.display = 'none';
+    return;
+  }
+
+  // Compara em pontos percentuais arredondados: 1 − 0,95 − 0,05 dá ~5e-17 (não zero) em ponto flutuante
+  const pctSum  = Math.round((cfg.margin + cfg.pix) * 100) / 100;
+  const divisor = 1 - pctSum / 100;
+  if (pctSum >= 100) {
+    out.innerHTML = '<div style="font-size:13px;color:var(--red);line-height:1.6"><i class="ti ti-alert-triangle ic"></i> Margem + taxa do Pix somam 100% ou mais. Reduza a margem para o cálculo fechar.</div>';
+    textCard.style.display = 'none';
+    return;
+  }
+
+  let total = cost / divisor;
+  if (cfg.round) {
+    let r = Math.floor(total) + 0.90;
+    if (r < total) r += 1;
+    total = r;
+  }
+  const unit      = total / qty;
+  const pixFee    = total * cfg.pix / 100;
+  const profit    = total - pixFee - cost;
+  const realMargin = total > 0 ? profit / total * 100 : 0;
+  const grand     = total + ship;
+
+  const row = (label, value, color) =>
+    `<div style="display:flex;justify-content:space-between;gap:12px;font-size:13px;padding:5px 0;border-bottom:0.5px solid var(--border)">
+       <span style="color:var(--text2)">${label}</span><span style="color:${color || 'var(--text)'};font-weight:600">${value}</span></div>`;
+
+  out.innerHTML = `
+    <div style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:6px;font-weight:600">Preço da encomenda</div>
+    <div style="font-size:32px;font-weight:700;color:var(--accent2);line-height:1.1">${fmt(total)}</div>
+    <div style="font-size:12px;color:var(--text3);margin:4px 0 14px">${qty > 1 ? fmt(unit) + ' cada · ' + qty + ' peças' : '1 peça'}${ship > 0 ? ' · com frete: ' + fmt(grand) : ''}</div>
+    ${row('Filamento', fmt(material))}
+    ${row('Hora de máquina', fmt(machine))}
+    ${paintTot > 0 ? row('Pintura / acabamento', fmt(paintTot)) : ''}
+    ${waste > 0.005 ? row('Perda / falhas (' + wasteRate.percent + '%)', fmt(waste)) : ''}
+    ${design > 0 ? row('Modelagem / arte', fmt(design)) : ''}
+    ${pkg > 0 ? row('Embalagem', fmt(pkg)) : ''}
+    ${row('Custo total', fmt(cost), 'var(--yellow)')}
+    ${pixFee > 0.005 ? row('Taxa do Pix', fmt(pixFee)) : ''}
+    ${row('Lucro', fmt(profit), profit >= 0 ? 'var(--green)' : 'var(--red)')}
+    ${row('Margem real', realMargin.toFixed(1).replace('.', ',') + '%', realMargin >= 0 ? 'var(--green)' : 'var(--red)')}
+    <div style="font-size:11px;color:var(--text3);margin-top:10px;line-height:1.5">Não inclui o frete. Confira a hora de máquina e a margem em relação ao que você já pratica.</div>`;
+
+  const lines = ['Orçamento — Print Lab'];
+  if (desc) lines.push('Peça: ' + desc);
+  lines.push('Quantidade: ' + qty);
+  lines.push('Valor: ' + fmt(total) + (qty > 1 ? ' (' + fmt(unit) + ' cada)' : ''));
+  lines.push(ship > 0 ? 'Frete: ' + fmt(ship) + ' (pago à parte)' : 'Frete: calculado pelo CEP e pago à parte');
+  if (ship > 0) lines.push('Total com frete: ' + fmt(grand));
+  if (deadline) lines.push('Prazo de produção: ' + deadline);
+  lines.push('Pagamento: Pix');
+  document.getElementById('qt-text').value = lines.join('\n');
+  textCard.style.display = 'block';
+}
+
+function quoteCopy() {
+  const ta = document.getElementById('qt-text');
+  const btn = document.getElementById('qt-copy-btn');
+  const done = () => {
+    btn.innerHTML = '<i class="ti ti-check ic"></i> Copiado';
+    setTimeout(() => { btn.innerHTML = '<i class="ti ti-copy ic"></i> Copiar orçamento'; }, 2000);
+  };
+  const fallback = () => {
+    ta.removeAttribute('readonly');
+    ta.select();
+    ta.setSelectionRange(0, ta.value.length);
+    try { document.execCommand('copy'); done(); } catch (e) {}
+    ta.setAttribute('readonly', '');
+  };
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(ta.value).then(done, fallback);
+  } else {
+    fallback();
+  }
+}
+
+// ══════════════════════════════════════════
 //  CALCULADORA DE PREÇO IDEAL
 // ══════════════════════════════════════════
 let _lastIdealPrice = 0;
@@ -8294,6 +8556,7 @@ function exportData() {
     recurringCosts,
     priceHistory,
     wasteRate,
+    quoteCfg,
     products,
     sales,
     expenses,
@@ -8332,6 +8595,7 @@ function importData(event) {
       priceHistory   = data.priceHistory   || priceHistory;
       wasteRate      = data.wasteRate      || wasteRate;
       shopeeFeeTiers = data.shopeeFeeTiers || shopeeFeeTiers;
+      quoteCfg       = data.quoteCfg       || quoteCfg;
       receipts       = data.receipts       || receipts;
       receiptPeriods = data.receiptPeriods || receiptPeriods;
       withdrawals    = data.withdrawals    || withdrawals;
@@ -8346,6 +8610,7 @@ function importData(event) {
       save('pl_price_history',    priceHistory);
       save('pl_waste_rate',       wasteRate);
       save('pl_shopee_fee_tiers', shopeeFeeTiers);
+      save('pl_quote_cfg',        quoteCfg);
 
       const msg = document.getElementById('import-msg');
       msg.style.display = 'block';
