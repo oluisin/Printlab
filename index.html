@@ -1942,6 +1942,15 @@
           <div class="field-hint">Energia + desgaste</div>
         </div>
       </div>
+      <div class="field">
+        <label>Tipo de envio</label>
+        <select id="qt-ship-type" onchange="quoteCalc()">
+          <option value="correios">Correios</option>
+          <option value="app">App de entrega</option>
+          <option value="transportadora">Transportadora</option>
+          <option value="retirada">Retirada em mãos</option>
+        </select>
+      </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
         <div class="field">
           <label>Taxa do Pix (%)</label>
@@ -8300,7 +8309,14 @@ function quoteCalc() {
   const hours   = num('qt-hours');
   const paint   = num('qt-paint');
   const design  = num('qt-design');
-  const ship    = num('qt-ship');
+  // Tipo de envio: na retirada em mãos não há frete (campo trava em zero); nos demais o valor cotado é digitado
+  const shipType = document.getElementById('qt-ship-type').value || 'correios';
+  const shipEl   = document.getElementById('qt-ship');
+  shipEl.disabled = shipType === 'retirada';
+  shipEl.placeholder = shipType === 'retirada' ? 'Sem frete' : (shipType === 'app' ? 'Valor do app' : 'Pelo CEP');
+  const ship    = shipType === 'retirada' ? 0 : num('qt-ship');
+  const SHIP_LABELS = { correios: 'Correios', app: 'App de entrega', transportadora: 'Transportadora', retirada: 'Retirada em mãos' };
+  const shipLabel = SHIP_LABELS[shipType] || SHIP_LABELS.correios;
   const desc    = document.getElementById('qt-desc').value.trim();
   const deadline = document.getElementById('qt-deadline').value.trim();
 
@@ -8354,7 +8370,7 @@ function quoteCalc() {
   out.innerHTML = `
     <div style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:6px;font-weight:600">Preço da encomenda</div>
     <div style="font-size:32px;font-weight:700;color:var(--accent2);line-height:1.1">${fmt(total)}</div>
-    <div style="font-size:12px;color:var(--text3);margin:4px 0 14px">${qty > 1 ? fmt(unit) + ' cada · ' + qty + ' peças' : '1 peça'}${ship > 0 ? ' · com frete: ' + fmt(grand) : ''}</div>
+    <div style="font-size:12px;color:var(--text3);margin:4px 0 14px">${qty > 1 ? fmt(unit) + ' cada · ' + qty + ' peças' : '1 peça'} · ${_quoteEsc(shipLabel)}${ship > 0 ? ' · com frete: ' + fmt(grand) : ''}</div>
     ${row('Filamento', fmt(material))}
     ${row('Hora de máquina', fmt(machine))}
     ${paintTot > 0 ? row('Pintura / acabamento', fmt(paintTot)) : ''}
@@ -8371,8 +8387,19 @@ function quoteCalc() {
   if (desc) lines.push('Peça: ' + desc);
   lines.push('Quantidade: ' + qty);
   lines.push('Valor: ' + fmt(total) + (qty > 1 ? ' (' + fmt(unit) + ' cada)' : ''));
-  lines.push(ship > 0 ? 'Frete: ' + fmt(ship) + ' (pago à parte)' : 'Frete: calculado pelo CEP e pago à parte');
-  if (ship > 0) lines.push('Total com frete: ' + fmt(grand));
+  if (shipType === 'retirada') {
+    lines.push('Entrega: retirada em mãos (sem frete)');
+  } else if (ship > 0) {
+    lines.push('Envio: ' + shipLabel + ' — frete ' + fmt(ship) + ' (pago à parte)');
+    lines.push('Total com frete: ' + fmt(grand));
+  } else {
+    const pending = {
+      correios:       'frete calculado pelo CEP e pago à parte',
+      app:            'valor do frete conforme o app, pago à parte',
+      transportadora: 'frete cotado pelo CEP e pago à parte',
+    };
+    lines.push('Envio: ' + shipLabel + ' — ' + (pending[shipType] || pending.correios));
+  }
   if (deadline) lines.push('Prazo de produção: ' + deadline);
   lines.push('Pagamento: Pix');
   document.getElementById('qt-text').value = lines.join('\n');
